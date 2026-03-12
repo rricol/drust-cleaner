@@ -23,6 +23,12 @@ pub struct UpdateInfo {
     pub body: Option<String>,
 }
 
+/// Return the current app version from tauri.conf.json.
+#[tauri::command]
+pub fn get_app_version(app: tauri::AppHandle) -> String {
+    app.package_info().version.to_string()
+}
+
 /// Check whether a newer version is available.
 /// Returns Some(UpdateInfo) if an update exists, None if already up to date.
 #[tauri::command]
