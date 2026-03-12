@@ -1,0 +1,16 @@
+[package]
+name = "cleaner-gui"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "cleaner_gui_lib"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+cleaner-core = { path = "../crates/cleaner-core" }

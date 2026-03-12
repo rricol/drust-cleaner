@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Folder Cleaner</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #1a1a2e;
+      --surface: #16213e;
+      --border: #0f3460;
+      --accent: #e94560;
+      --accent2: #533483;
+      --text: #eaeaea;
+      --text-dim: #8892a4;
+      --green: #4caf50;
+      --yellow: #ffc107;
+      --red: #f44336;
+      --cyan: #00bcd4;
+      --radius: 10px;
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    header svg { flex-shrink: 0; }
+
+    header h1 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    /* ── Main content ── */
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+    }
+
+    .card-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      margin-bottom: 14px;
+    }
+
+    /* ── Folder picker ── */
+    #folder-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    #folder-path {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 9px 14px;
+      color: var(--text-dim);
+      font-size: 0.9rem;
+      font-family: monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #folder-path.has-value { color: var(--text); }
+
+    /* ── Buttons ── */
+    .btn {
+      border: none;
+      border-radius: 6px;
+      padding: 9px 18px;
+      font-family: var(--font);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+
+    .btn:hover:not(:disabled) { opacity: 0.88; }
+    .btn:active:not(:disabled) { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-primary   { background: var(--accent);  color: #fff; }
+    .btn-secondary { background: var(--accent2); color: #fff; }
+    .btn-outline   { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-green     { background: var(--green); color: #fff; }
+    .btn-yellow    { background: var(--yellow); color: #1a1a2e; }
+
+    /* ── Status banner ── */
+    #status-banner {
+      display: none;
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-size: 0.9rem;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    #status-banner.visible { display: flex; }
+
+    #status-banner.info    { background: #1a2e3e; border: 1px solid var(--cyan); color: var(--cyan); }
+    #status-banner.success { background: #1a2e1a; border: 1px solid var(--green); color: var(--green); }
+    #status-banner.warning { background: #2e2a1a; border: 1px solid var(--yellow); color: var(--yellow); }
+    #status-banner.error   { background: #2e1a1a; border: 1px solid var(--red); color: var(--red); }
+
+    #status-text { flex: 1; }
+
+    /* ── Action buttons row ── */
+    #actions {
+      display: none;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    #actions.visible { display: flex; }
+
+    /* ── Log area ── */
+    #log-card { display: none; flex-direction: column; }
+    #log-card.visible { display: flex; }
+
+    #log-output {
+      background: #0d0d1a;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px;
+      font-family: "Cascadia Code", "Fira Code", "Courier New", monospace;
+      font-size: 0.82rem;
+      line-height: 1.6;
+      max-height: 220px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .log-line { display: block; }
+    .log-moved   { color: var(--green); }
+    .log-dryrun  { color: var(--cyan); }
+    .log-error   { color: var(--red); }
+    .log-warn    { color: var(--yellow); }
+    .log-default { color: var(--text-dim); }
+
+    /* ── Summary bar ── */
+    #summary {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .stat-label {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .stat-value.green  { color: var(--green); }
+    .stat-value.red    { color: var(--red); }
+    .stat-value.yellow { color: var(--yellow); }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e94560" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 3h7l2 3h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
+    <line x1="9" y1="14" x2="15" y2="14"/>
+    <line x1="12" y1="11" x2="12" y2="17"/>
+  </svg>
+  <h1>Folder Cleaner</h1>
+</header>
+
+<main>
+
+  <!-- Folder picker card -->
+  <div class="card">
+    <div class="card-title">Target Folder</div>
+    <div id="folder-row">
+      <div id="folder-path">No folder selected…</div>
+      <button class="btn btn-primary" id="btn-pick">Choose Folder</button>
+    </div>
+  </div>
+
+  <!-- Status banner (config found / not found / errors) -->
+  <div id="status-banner">
+    <span id="status-icon">ℹ</span>
+    <span id="status-text"></span>
+  </div>
+
+  <!-- Action buttons -->
+  <div id="actions">
+    <button class="btn btn-outline" id="btn-generate" style="display:none">Generate Default Config</button>
+    <button class="btn btn-yellow"  id="btn-dry"      style="display:none">Dry Run</button>
+    <button class="btn btn-green"   id="btn-run"      style="display:none">Run Now</button>
+  </div>
+
+  <!-- Log output card -->
+  <div class="card" id="log-card">
+    <div class="card-title">Output</div>
+    <div id="log-output"></div>
+  </div>
+
+  <!-- Summary card -->
+  <div class="card" id="summary-card" style="display:none">
+    <div class="card-title">Summary</div>
+    <div id="summary">
+      <div class="stat"><span class="stat-value green" id="stat-moved">0</span><span class="stat-label">Files moved</span></div>
+      <div class="stat"><span class="stat-value red"   id="stat-errors">0</span><span class="stat-label">Errors</span></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  const { invoke } = window.__TAURI__.core;
+  const { open }   = window.__TAURI__.dialog;
+
+  let currentFolder = null;
+
+  // ── DOM refs ──────────────────────────────────────────────────────────────
+  const folderPathEl   = document.getElementById("folder-path");
+  const statusBanner   = document.getElementById("status-banner");
+  const statusText     = document.getElementById("status-text");
+  const statusIcon     = document.getElementById("status-icon");
+  const actionsEl      = document.getElementById("actions");
+  const btnGenerate    = document.getElementById("btn-generate");
+  const btnDry         = document.getElementById("btn-dry");
+  const btnRun         = document.getElementById("btn-run");
+  const logCard        = document.getElementById("log-card");
+  const logOutput      = document.getElementById("log-output");
+  const summaryCard    = document.getElementById("summary-card");
+  const statMoved      = document.getElementById("stat-moved");
+  const statErrors     = document.getElementById("stat-errors");
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function showStatus(type, icon, text) {
+    statusBanner.className = `visible ${type}`;
+    statusIcon.textContent = icon;
+    statusText.textContent = text;
+  }
+
+  function clearLog() {
+    logOutput.textContent = "";
+    logCard.classList.remove("visible");
+    summaryCard.style.display = "none";
+  }
+
+  function appendLog(msg) {
+    const span = document.createElement("span");
+    span.className = "log-line " + classifyMsg(msg);
+    span.textContent = msg;
+    logOutput.appendChild(span);
+    logOutput.appendChild(document.createTextNode("\n"));
+    logOutput.scrollTop = logOutput.scrollHeight;
+  }
+
+  function classifyMsg(msg) {
+    if (msg.startsWith("[DRY-RUN]")) return "log-dryrun";
+    if (msg.startsWith("MOVED"))     return "log-moved";
+    if (msg.startsWith("ERROR"))     return "log-error";
+    if (msg.includes("WARN"))        return "log-warn";
+    return "log-default";
+  }
+
+  function setButtonsLoading(loading) {
+    [btnDry, btnRun, btnGenerate].forEach(b => b.disabled = loading);
+  }
+
+  // ── Pick folder ───────────────────────────────────────────────────────────
+  document.getElementById("btn-pick").addEventListener("click", async () => {
+    const path = await open({ directory: true, multiple: false });
+    if (!path) return;
+
+    currentFolder = path;
+    folderPathEl.textContent = path;
+    folderPathEl.classList.add("has-value");
+    clearLog();
+
+    // Check for config
+    const hasConfig = await invoke("check_config", { folderPath: path });
+
+    actionsEl.classList.add("visible");
+
+    if (hasConfig) {
+      showStatus("success", "✓", "cleaner.toml found — ready to clean.");
+      btnGenerate.style.display = "none";
+      btnDry.style.display = "";
+      btnRun.style.display = "";
+    } else {
+      showStatus("warning", "⚠", "No cleaner.toml found in this folder. Generate a default one to get started.");
+      btnGenerate.style.display = "";
+      btnDry.style.display = "none";
+      btnRun.style.display = "none";
+    }
+  });
+
+  // ── Generate config ───────────────────────────────────────────────────────
+  btnGenerate.addEventListener("click", async () => {
+    if (!currentFolder) return;
+    setButtonsLoading(true);
+
+    try {
+      await invoke("generate_default_config", { folderPath: currentFolder });
+      showStatus("success", "✓", "cleaner.toml created with default rules.");
+      btnGenerate.style.display = "none";
+      btnDry.style.display = "";
+      btnRun.style.display = "";
+    } catch (e) {
+      showStatus("error", "✗", `Failed to generate config: ${e}`);
+    } finally {
+      setButtonsLoading(false);
+    }
+  });
+
+  // ── Run cleaner ───────────────────────────────────────────────────────────
+  async function runCleaner(dryRun) {
+    if (!currentFolder) return;
+
+    setButtonsLoading(true);
+    clearLog();
+    logCard.classList.add("visible");
+    appendLog(dryRun ? "Starting dry run…" : "Starting run…");
+
+    try {
+      const result = await invoke("run_cleaner", { folderPath: currentFolder, dryRun });
+
+      for (const msg of result.messages) {
+        appendLog(msg);
+      }
+
+      // Summary
+      summaryCard.style.display = "";
+      statMoved.textContent  = result.moved;
+      statErrors.textContent = result.errors;
+
+      if (dryRun) {
+        showStatus("info", "ℹ", `Dry run complete — ${result.moved} file(s) would be moved.`);
+      } else if (result.errors > 0) {
+        showStatus("error", "✗", `Done with errors — ${result.moved} moved, ${result.errors} error(s).`);
+      } else {
+        showStatus("success", "✓", `Done — ${result.moved} file(s) moved successfully.`);
+      }
+    } catch (e) {
+      appendLog(`ERROR: ${e}`);
+      showStatus("error", "✗", `Run failed: ${e}`);
+    } finally {
+      setButtonsLoading(false);
+    }
+  }
+
+  btnDry.addEventListener("click", () => runCleaner(true));
+  btnRun.addEventListener("click", () => runCleaner(false));
+</script>
+
+</body>
+</html>
