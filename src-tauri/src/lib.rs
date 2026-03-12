@@ -4,6 +4,10 @@ mod commands;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            commands::seed_templates(app.handle());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::open_folder,
             commands::check_config,

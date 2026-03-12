@@ -92,6 +92,23 @@ fn templates_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         .map_err(|e| e.to_string())
 }
 
+/// Seed the templates directory with built-in defaults on first launch.
+/// Does nothing if the directory already contains at least one `.toml` file.
+pub fn seed_templates(app: &tauri::AppHandle) {
+    let dir = match templates_dir(app) {
+        Ok(d) => d,
+        Err(_) => return,
+    };
+    let is_empty = !dir.exists()
+        || fs::read_dir(&dir)
+            .map(|mut d| d.next().is_none())
+            .unwrap_or(true);
+    if is_empty {
+        let _ = fs::create_dir_all(&dir);
+        let _ = fs::write(dir.join("Default.toml"), DEFAULT_CONFIG_TEMPLATE);
+    }
+}
+
 /// Return sorted list of template names (filenames without `.toml` extension).
 #[tauri::command]
 pub fn list_templates(app: tauri::AppHandle) -> Result<Vec<String>, String> {

@@ -10,7 +10,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Folder Cleaner",
+        "title": "Drust Cleaner",
         "width": 900,
         "height": 650,
         "resizable": true,
