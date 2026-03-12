@@ -14,6 +14,23 @@ pub struct CleanResult {
     pub errors: usize,
 }
 
+/// Open `folder_path` in the system file manager (Finder / Explorer / xdg-open).
+#[tauri::command]
+pub fn open_folder(folder_path: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    let cmd = "open";
+    #[cfg(target_os = "windows")]
+    let cmd = "explorer";
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    let cmd = "xdg-open";
+
+    std::process::Command::new(cmd)
+        .arg(&folder_path)
+        .spawn()
+        .map_err(|e| format!("Failed to open folder: {e}"))?;
+    Ok(())
+}
+
 /// Return true if `cleaner.toml` exists inside the given folder.
 #[tauri::command]
 pub fn check_config(folder_path: String) -> bool {
@@ -165,6 +182,30 @@ pub fn rename_template(
     let new_path = dir.join(format!("{new_name}.toml"));
     fs::rename(&old_path, &new_path).map_err(|e| format!("Failed to rename template: {e}"))?;
     Ok(())
+}
+
+/// Read the local `cleaner.toml` from a folder and return its settings + rules.
+#[tauri::command]
+pub fn get_folder_config_info(folder_path: String) -> Result<TemplateInfo, String> {
+    let path = PathBuf::from(&folder_path).join("cleaner.toml");
+    let cfg = config::load_config(&path).map_err(|e| e.to_string())?;
+    Ok(TemplateInfo {
+        recursive: cfg.settings.recursive,
+        unmatched_destination: cfg.settings.unmatched_destination,
+        rules: cfg
+            .rules
+            .into_iter()
+            .map(|r| TemplateRule {
+                name: r.name,
+                destination: r.destination,
+                extensions: r.extensions,
+                name_pattern: r.name_pattern,
+                min_size_mb: r.min_size_mb,
+                max_size_mb: r.max_size_mb,
+                ignore: r.ignore,
+            })
+            .collect(),
+    })
 }
 
 /// Parse a template and return its settings + rules for display.

@@ -115,9 +115,27 @@
     /* ── Folder picker ── */
     #folder-row {
       display: flex;
-      gap: 12px;
+      gap: 8px;
       align-items: center;
     }
+
+    .icon-btn {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-dim);
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      flex-shrink: 0;
+      transition: color 0.15s, border-color 0.15s, background 0.15s;
+    }
+
+    .icon-btn:hover { color: var(--text); border-color: var(--accent2); background: rgba(83,52,131,0.15); }
+    .icon-btn.visible { display: flex; }
 
     #folder-path {
       flex: 1;
@@ -847,16 +865,96 @@
 
     #tmpl-status.ok    { color: var(--green); }
     #tmpl-status.err   { color: var(--red); }
+
+    /* ── Config card (cleaner view) ── */
+    #config-card { display: none; }
+
+    .config-select-wrap { position: relative; }
+
+    .config-select-btn {
+      width: 100%; display: flex; align-items: center; gap: 10px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+      padding: 9px 14px; color: var(--text); font-family: var(--font);
+      font-size: 0.88rem; cursor: pointer; text-align: left;
+      transition: border-color 0.15s;
+    }
+    .config-select-btn:hover { border-color: var(--accent2); }
+    .config-select-btn.open  { border-color: var(--accent2); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+
+    .config-btn-label { flex: 1; }
+
+    .config-dropdown-arrow {
+      color: var(--text-dim); font-size: 0.75rem; flex-shrink: 0; transition: transform 0.15s;
+    }
+    .config-select-btn.open .config-dropdown-arrow { transform: rotate(180deg); }
+
+    .config-badge {
+      font-size: 0.68rem; font-weight: 600; padding: 2px 7px;
+      border-radius: 3px; flex-shrink: 0;
+    }
+    .config-badge.found   { background: rgba(76,175,80,0.2);  color: var(--green);  border: 1px solid rgba(76,175,80,0.4); }
+    .config-badge.missing { background: rgba(255,193,7,0.15); color: var(--yellow); border: 1px solid rgba(255,193,7,0.4); }
+    .config-badge.tmpl    { background: rgba(0,188,212,0.15); color: var(--cyan);   border: 1px solid rgba(0,188,212,0.4); }
+
+    .config-dropdown-menu {
+      position: absolute; top: 100%; left: 0; right: 0;
+      background: var(--surface); border: 1px solid var(--accent2);
+      border-top: none; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px;
+      z-index: 20; max-height: 220px; overflow-y: auto;
+    }
+    .config-opt {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 14px; font-size: 0.88rem; cursor: pointer; transition: background 0.1s;
+    }
+    .config-opt:hover    { background: rgba(255,255,255,0.06); }
+    .config-opt.selected { background: rgba(83,52,131,0.25); }
+
+    .config-opt-separator {
+      padding: 5px 14px; font-size: 0.68rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim);
+      border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-top: 2px;
+    }
+    .config-opt-empty { padding: 8px 14px; font-size: 0.82rem; color: var(--text-dim); font-style: italic; }
+
+    .config-actions-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+
+    .config-status-line { font-size: 0.82rem; margin-top: 10px; min-height: 1.2em; }
+    .config-status-line.ok   { color: var(--green); }
+    .config-status-line.err  { color: var(--red); }
+    .config-status-line.info { color: var(--cyan); }
+
+    /* ── Log card header with inline summary ── */
+    #log-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    #log-card-header .card-title { margin-bottom: 0; }
+
+    #log-summary { display: none; align-items: center; gap: 14px; }
+
+    .run-badge {
+      font-size: 0.68rem; font-weight: 700;
+      padding: 2px 8px; border-radius: 3px;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .run-badge.dry { background: rgba(0,188,212,0.15); color: var(--cyan);  border: 1px solid rgba(0,188,212,0.4); }
+    .run-badge.run { background: rgba(76,175,80,0.15);  color: var(--green); border: 1px solid rgba(76,175,80,0.4); }
+    .run-badge.err { background: rgba(244,67,54,0.15);  color: var(--red);   border: 1px solid rgba(244,67,54,0.4); }
+
+    .log-stat { display: flex; align-items: baseline; gap: 4px; }
+    .log-stat-value { font-size: 1.1rem; font-weight: 700; }
+    .log-stat-value.green  { color: var(--green); }
+    .log-stat-value.red    { color: var(--red); }
+    .log-stat-label { font-size: 0.68rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
   </style>
 </head>
 <body>
 
 <header>
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e94560" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M3 3h7l2 3h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
-    <line x1="9" y1="14" x2="15" y2="14"/>
-    <line x1="12" y1="11" x2="12" y2="17"/>
-  </svg>
+  <img src="icon.png" width="28" height="28" style="border-radius:6px;flex-shrink:0" />
   <h1>Folder Cleaner</h1>
   <nav class="tab-nav">
     <button class="tab-btn active" data-view="cleaner">Cleaner</button>
@@ -873,48 +971,57 @@
     <div id="folder-row">
       <div id="folder-path">No folder selected…</div>
       <button class="btn btn-primary" id="btn-pick">Choose Folder</button>
+      <button class="icon-btn" id="btn-change-folder" title="Change folder">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3h7l2 3h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
+          <path d="M15 13l-3 3 3 3"/>
+          <line x1="12" y1="16" x2="19" y2="16"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="btn-open-folder" title="Open in Finder">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          <polyline points="15,3 21,3 21,9"/>
+          <line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+      </button>
     </div>
   </div>
 
-  <!-- Status banner -->
-  <div id="status-banner">
-    <span id="status-icon">ℹ</span>
-    <span id="status-text"></span>
-  </div>
-
-  <!-- Action buttons -->
-  <div id="actions">
-    <button class="btn btn-outline" id="btn-generate" style="display:none">Generate Default Config</button>
-    <button class="btn btn-yellow"  id="btn-dry"      style="display:none">Dry Run</button>
-    <button class="btn btn-green"   id="btn-run"      style="display:none">Run Now</button>
-  </div>
-
-  <!-- Templates card -->
-  <div class="card" id="templates-card">
-    <div class="card-title">Templates</div>
-    <div id="template-save-row">
-      <input type="text" id="template-name-input" placeholder="Template name…" />
-      <button class="btn btn-secondary" id="btn-save-template">Save Current Config</button>
+  <!-- Config source card -->
+  <div class="card" id="config-card">
+    <div class="card-title">Configuration</div>
+    <div class="config-select-wrap">
+      <button id="config-select-btn" class="config-select-btn">
+        <span class="config-btn-label" id="config-btn-label">Local config (cleaner.toml)</span>
+        <span class="config-badge" id="config-btn-badge"></span>
+        <span class="config-dropdown-arrow">▾</span>
+      </button>
+      <div id="config-dropdown-menu" class="config-dropdown-menu" style="display:none">
+        <div class="config-opt" id="cfg-opt-local" data-value="local">
+          <span>Local config (cleaner.toml)</span>
+          <span class="config-badge" id="cfg-local-badge"></span>
+        </div>
+        <div class="config-opt-separator">Templates</div>
+        <div id="cfg-template-opts"></div>
+        <div id="cfg-no-templates" class="config-opt-empty">No templates saved</div>
+      </div>
     </div>
-    <hr id="template-divider" />
-    <div id="template-list">
-      <div id="template-empty">No templates saved yet</div>
-    </div>
+    <div class="config-actions-row" id="config-actions"></div>
+    <div class="config-status-line" id="config-status"></div>
   </div>
 
   <!-- Log output card -->
   <div class="card" id="log-card">
-    <div class="card-title">Output</div>
-    <div id="log-output"></div>
-  </div>
-
-  <!-- Summary card -->
-  <div class="card" id="summary-card" style="display:none">
-    <div class="card-title">Summary</div>
-    <div id="summary">
-      <div class="stat"><span class="stat-value green" id="stat-moved">0</span><span class="stat-label">Files moved</span></div>
-      <div class="stat"><span class="stat-value red"   id="stat-errors">0</span><span class="stat-label">Errors</span></div>
+    <div id="log-card-header">
+      <div class="card-title">Output</div>
+      <div id="log-summary">
+        <span id="log-run-badge" class="run-badge"></span>
+        <div class="log-stat"><span class="log-stat-value green" id="stat-moved">0</span><span class="log-stat-label">moved</span></div>
+        <div class="log-stat"><span class="log-stat-value red"   id="stat-errors">0</span><span class="log-stat-label">errors</span></div>
+      </div>
     </div>
+    <div id="log-output"></div>
   </div>
 
 </div><!-- #view-cleaner -->
@@ -983,6 +1090,7 @@
       <button id="modal-close" title="Close">✕</button>
     </div>
     <div id="modal-body"></div>
+    <div id="modal-footer" style="display:none;padding:12px 20px;border-top:1px solid var(--border);flex-shrink:0;gap:8px;justify-content:flex-end;"></div>
   </div>
 </div>
 
@@ -1009,35 +1117,27 @@
   // ────────────────────────────────────────────────────────────────────────────
   // CLEANER VIEW
   // ────────────────────────────────────────────────────────────────────────────
-  const folderPathEl    = document.getElementById("folder-path");
-  const statusBanner    = document.getElementById("status-banner");
-  const statusText      = document.getElementById("status-text");
-  const statusIcon      = document.getElementById("status-icon");
-  const actionsEl       = document.getElementById("actions");
-  const btnGenerate     = document.getElementById("btn-generate");
-  const btnDry          = document.getElementById("btn-dry");
-  const btnRun          = document.getElementById("btn-run");
-  const logCard         = document.getElementById("log-card");
-  const logOutput       = document.getElementById("log-output");
-  const summaryCard     = document.getElementById("summary-card");
-  const statMoved       = document.getElementById("stat-moved");
-  const statErrors      = document.getElementById("stat-errors");
-  const templatesCard   = document.getElementById("templates-card");
-  const templateList    = document.getElementById("template-list");
-  const templateEmpty   = document.getElementById("template-empty");
-  const templateInput   = document.getElementById("template-name-input");
-  const btnSaveTemplate = document.getElementById("btn-save-template");
+  const folderPathEl = document.getElementById("folder-path");
+  const logCard      = document.getElementById("log-card");
+  const logOutput    = document.getElementById("log-output");
+  const logSummary   = document.getElementById("log-summary");
+  const logRunBadge  = document.getElementById("log-run-badge");
+  const statMoved    = document.getElementById("stat-moved");
+  const statErrors   = document.getElementById("stat-errors");
 
-  function showStatus(type, icon, text) {
-    statusBanner.className = `visible ${type}`;
-    statusIcon.textContent = icon;
-    statusText.textContent = text;
+  let selectedConfigSource = "local";  // "local" | template name
+  let hasLocalConfig       = false;
+
+  function setConfigStatus(msg, type) {
+    const el = document.getElementById("config-status");
+    el.textContent = msg;
+    el.className = "config-status-line" + (type ? ` ${type}` : "");
   }
 
   function clearLog() {
     logOutput.textContent = "";
     logCard.classList.remove("visible");
-    summaryCard.style.display = "none";
+    logSummary.style.display = "none";
   }
 
   function appendLog(msg) {
@@ -1057,197 +1157,238 @@
     return "log-default";
   }
 
-  function setButtonsLoading(loading) {
-    [btnDry, btnRun, btnGenerate].forEach(b => b.disabled = loading);
+  // ── Config dropdown ────────────────────────────────────────────────────────
+  const cfgSelectBtn    = document.getElementById("config-select-btn");
+  const cfgDropdownMenu = document.getElementById("config-dropdown-menu");
+  const cfgBtnLabel     = document.getElementById("config-btn-label");
+  const cfgBtnBadge     = document.getElementById("config-btn-badge");
+  const cfgLocalBadge   = document.getElementById("cfg-local-badge");
+  const cfgTemplateOpts = document.getElementById("cfg-template-opts");
+  const cfgNoTemplates  = document.getElementById("cfg-no-templates");
+
+  cfgSelectBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isOpen = cfgDropdownMenu.style.display !== "none";
+    cfgDropdownMenu.style.display = isOpen ? "none" : "";
+    cfgSelectBtn.classList.toggle("open", !isOpen);
+  });
+
+  document.addEventListener("click", () => {
+    cfgDropdownMenu.style.display = "none";
+    cfgSelectBtn.classList.remove("open");
+  });
+
+  cfgDropdownMenu.addEventListener("click", e => e.stopPropagation());
+
+  document.getElementById("cfg-opt-local").addEventListener("click", () => {
+    selectedConfigSource = "local";
+    updateConfigDropdownDisplay();
+    renderConfigActions();
+    cfgDropdownMenu.style.display = "none";
+    cfgSelectBtn.classList.remove("open");
+    setConfigStatus("");
+  });
+
+  async function loadConfigDropdown() {
+    const names = await invoke("list_templates");
+    cfgTemplateOpts.innerHTML = "";
+
+    if (names.length === 0) {
+      cfgNoTemplates.style.display = "";
+    } else {
+      cfgNoTemplates.style.display = "none";
+      for (const name of names) {
+        const opt = document.createElement("div");
+        opt.className = "config-opt";
+        opt.dataset.value = name;
+        opt.textContent = name;
+        opt.addEventListener("click", () => {
+          selectedConfigSource = name;
+          updateConfigDropdownDisplay();
+          renderConfigActions();
+          cfgDropdownMenu.style.display = "none";
+          cfgSelectBtn.classList.remove("open");
+          setConfigStatus("");
+        });
+        cfgTemplateOpts.appendChild(opt);
+      }
+    }
+
+    if (selectedConfigSource !== "local" && !names.includes(selectedConfigSource)) {
+      selectedConfigSource = "local";
+    }
+    updateConfigDropdownDisplay();
+    renderConfigActions();
   }
 
-  function updateSaveButton(hasConfig) {
-    btnSaveTemplate.disabled = !hasConfig;
+  function updateConfigDropdownDisplay() {
+    if (selectedConfigSource === "local") {
+      cfgBtnLabel.textContent = "Local config (cleaner.toml)";
+      cfgBtnBadge.textContent = hasLocalConfig ? "found" : "not found";
+      cfgBtnBadge.className   = "config-badge " + (hasLocalConfig ? "found" : "missing");
+    } else {
+      cfgBtnLabel.textContent = selectedConfigSource;
+      cfgBtnBadge.textContent = "template";
+      cfgBtnBadge.className   = "config-badge tmpl";
+    }
+    cfgLocalBadge.textContent = hasLocalConfig ? "found" : "not found";
+    cfgLocalBadge.className   = "config-badge " + (hasLocalConfig ? "found" : "missing");
+    document.getElementById("cfg-opt-local").classList.toggle("selected", selectedConfigSource === "local");
+    cfgTemplateOpts.querySelectorAll(".config-opt").forEach(opt => {
+      opt.classList.toggle("selected", opt.dataset.value === selectedConfigSource);
+    });
+  }
+
+  function renderConfigActions() {
+    const actionsEl = document.getElementById("config-actions");
+    actionsEl.innerHTML = "";
+
+    if (selectedConfigSource === "local") {
+      if (hasLocalConfig) {
+        actionsEl.append(
+          makeBtn("Dry Run", "btn-yellow", () => runCleaner(true)),
+          makeBtn("Run Now", "btn-green",  () => runCleaner(false)),
+          makeBtn("Manage",  "btn-outline", () => showFolderRules())
+        );
+      } else {
+        const btnCreate = makeBtn("Create new config", "btn-primary", async () => {
+          btnCreate.disabled = true;
+          try {
+            await invoke("generate_default_config", { folderPath: currentFolder });
+            hasLocalConfig = true;
+            updateConfigDropdownDisplay();
+            renderConfigActions();
+            setConfigStatus("cleaner.toml created with default rules.", "ok");
+          } catch (e) {
+            setConfigStatus(`Failed to create config: ${e}`, "err");
+          } finally {
+            btnCreate.disabled = false;
+          }
+        });
+        actionsEl.append(btnCreate);
+      }
+    } else {
+      const tmplName = selectedConfigSource;
+      const btnApply = makeBtn("Apply as local config", "btn-secondary", async () => {
+        btnApply.disabled = true;
+        try {
+          await invoke("apply_template", { templateName: tmplName, folderPath: currentFolder });
+          hasLocalConfig = true;
+          selectedConfigSource = "local";
+          updateConfigDropdownDisplay();
+          renderConfigActions();
+          setConfigStatus(`Template "${tmplName}" applied as local config.`, "ok");
+        } catch (e) {
+          setConfigStatus(`Failed to apply template: ${e}`, "err");
+          btnApply.disabled = false;
+        }
+      });
+      actionsEl.append(btnApply);
+      if (hasLocalConfig) {
+        actionsEl.append(
+          makeBtn("Dry Run", "btn-yellow", () => runCleaner(true)),
+          makeBtn("Run Now", "btn-green",  () => runCleaner(false))
+        );
+      }
+    }
+  }
+
+  function makeBtn(label, cls, onClick) {
+    const btn = document.createElement("button");
+    btn.className = `btn ${cls}`;
+    btn.textContent = label;
+    btn.addEventListener("click", onClick);
+    return btn;
   }
 
   // ── Folder pick ────────────────────────────────────────────────────────────
-  document.getElementById("btn-pick").addEventListener("click", async () => {
+  const btnPick         = document.getElementById("btn-pick");
+  const btnChangeFolder = document.getElementById("btn-change-folder");
+  const btnOpenFolder   = document.getElementById("btn-open-folder");
+
+  async function pickFolder() {
     const path = await open({ directory: true, multiple: false });
     if (!path) return;
 
     currentFolder = path;
     folderPathEl.textContent = path;
     folderPathEl.classList.add("has-value");
+    btnPick.style.display = "none";
+    btnChangeFolder.classList.add("visible");
+    btnOpenFolder.classList.add("visible");
     clearLog();
+    setConfigStatus("");
+    selectedConfigSource = "local";
+    hasLocalConfig = await invoke("check_config", { folderPath: path });
+    document.getElementById("config-card").style.display = "block";
+    await loadConfigDropdown();
+  }
 
-    const hasConfig = await invoke("check_config", { folderPath: path });
+  btnPick.addEventListener("click", pickFolder);
+  btnChangeFolder.addEventListener("click", pickFolder);
 
-    actionsEl.classList.add("visible");
-    templatesCard.classList.add("visible");
-    updateSaveButton(hasConfig);
-    await loadCleanerTemplates();
-
-    if (hasConfig) {
-      showStatus("success", "✓", "cleaner.toml found — ready to clean.");
-      btnGenerate.style.display = "none";
-      btnDry.style.display = "";
-      btnRun.style.display = "";
-    } else {
-      showStatus("warning", "⚠", "No cleaner.toml found. Generate a default one to get started.");
-      btnGenerate.style.display = "";
-      btnDry.style.display = "none";
-      btnRun.style.display = "none";
-    }
-  });
-
-  // ── Generate config ────────────────────────────────────────────────────────
-  btnGenerate.addEventListener("click", async () => {
+  btnOpenFolder.addEventListener("click", async () => {
     if (!currentFolder) return;
-    setButtonsLoading(true);
     try {
-      await invoke("generate_default_config", { folderPath: currentFolder });
-      showStatus("success", "✓", "cleaner.toml created with default rules.");
-      btnGenerate.style.display = "none";
-      btnDry.style.display = "";
-      btnRun.style.display = "";
-      updateSaveButton(true);
+      await invoke("open_folder", { folderPath: currentFolder });
     } catch (e) {
-      showStatus("error", "✗", `Failed to generate config: ${e}`);
-    } finally {
-      setButtonsLoading(false);
+      setConfigStatus(`Failed to open folder: ${e}`, "err");
     }
   });
 
   // ── Run cleaner ────────────────────────────────────────────────────────────
   async function runCleaner(dryRun) {
     if (!currentFolder) return;
-    setButtonsLoading(true);
+    const actionsEl = document.getElementById("config-actions");
+    actionsEl.querySelectorAll("button").forEach(b => b.disabled = true);
     clearLog();
     logCard.classList.add("visible");
     appendLog(dryRun ? "Starting dry run…" : "Starting run…");
     try {
       const result = await invoke("run_cleaner", { folderPath: currentFolder, dryRun });
       for (const msg of result.messages) appendLog(msg);
-      summaryCard.style.display = "";
       statMoved.textContent  = result.moved;
       statErrors.textContent = result.errors;
-      if (dryRun) {
-        showStatus("info", "ℹ", `Dry run complete — ${result.moved} file(s) would be moved.`);
-      } else if (result.errors > 0) {
-        showStatus("error", "✗", `Done with errors — ${result.moved} moved, ${result.errors} error(s).`);
+      const hasErr = result.errors > 0;
+      logRunBadge.textContent = dryRun ? "Dry Run" : (hasErr ? "Run" : "Run");
+      logRunBadge.className   = "run-badge " + (dryRun ? "dry" : (hasErr ? "err" : "run"));
+      logSummary.style.display = "flex";
+      if (hasErr && !dryRun) {
+        setConfigStatus(`Done with errors — ${result.errors} error(s).`, "err");
       } else {
-        showStatus("success", "✓", `Done — ${result.moved} file(s) moved successfully.`);
+        setConfigStatus("", "");
       }
     } catch (e) {
       appendLog(`ERROR: ${e}`);
-      showStatus("error", "✗", `Run failed: ${e}`);
+      setConfigStatus(`Run failed: ${e}`, "err");
     } finally {
-      setButtonsLoading(false);
+      actionsEl.querySelectorAll("button").forEach(b => b.disabled = false);
     }
   }
 
-  btnDry.addEventListener("click", () => runCleaner(true));
-  btnRun.addEventListener("click", () => runCleaner(false));
-
-  // ── Templates card (cleaner view) ──────────────────────────────────────────
-  async function loadCleanerTemplates() {
-    const names = await invoke("list_templates");
-    Array.from(templateList.children).forEach(el => {
-      if (el !== templateEmpty) el.remove();
-    });
-    if (names.length === 0) {
-      templateEmpty.style.display = "";
-      return;
-    }
-    templateEmpty.style.display = "none";
-    for (const name of names) {
-      const item = document.createElement("div");
-      item.className = "template-item";
-      item.innerHTML = `
-        <span class="template-item-name">› ${escHtml(name)}</span>
-        <button class="btn btn-outline btn-sm" data-action="view"   data-name="${escAttr(name)}">View</button>
-        <button class="btn btn-yellow  btn-sm" data-action="apply"  data-name="${escAttr(name)}">Apply</button>
-        <button class="btn btn-danger  btn-sm" data-action="delete" data-name="${escAttr(name)}">Delete</button>
-      `;
-      templateList.appendChild(item);
-    }
-  }
-
-  templateList.addEventListener("click", async (e) => {
-    const btn = e.target.closest("button[data-action]");
-    if (!btn) return;
-    const action = btn.dataset.action;
-    const name   = btn.dataset.name;
-
-    if (action === "view") {
-      showTemplateRules(name);
-      return;
-    }
-    if (!currentFolder) return;
-
-    if (action === "delete") {
-      try {
-        await invoke("delete_template", { templateName: name });
-        await loadCleanerTemplates();
-      } catch (err) {
-        showStatus("error", "✗", `Failed to delete template: ${err}`);
-      }
-    } else if (action === "apply") {
-      try {
-        await invoke("apply_template", { templateName: name, folderPath: currentFolder });
-        showStatus("success", "✓", `Template "${name}" applied — cleaner.toml updated.`);
-        btnGenerate.style.display = "none";
-        btnDry.style.display = "";
-        btnRun.style.display = "";
-        actionsEl.classList.add("visible");
-        updateSaveButton(true);
-        await loadCleanerTemplates();
-      } catch (err) {
-        showStatus("error", "✗", `Failed to apply template: ${err}`);
-      }
-    }
-  });
-
-  btnSaveTemplate.addEventListener("click", async () => {
-    if (!currentFolder) return;
-    const name = templateInput.value.trim();
-    if (!name) { templateInput.focus(); return; }
-    try {
-      await invoke("save_as_template", { folderPath: currentFolder, templateName: name });
-      templateInput.value = "";
-      await loadCleanerTemplates();
-    } catch (err) {
-      showStatus("error", "✗", `Failed to save template: ${err}`);
-    }
-  });
-
-  // ── View rules modal ────────────────────────────────────────────────────────
+  // ── Modal ────────────────────────────────────────────────────────────────
   const modalBackdrop = document.getElementById("modal-backdrop");
   const modalTitle    = document.getElementById("modal-title");
   const modalBody     = document.getElementById("modal-body");
   const modalClose    = document.getElementById("modal-close");
+  const modalFooter   = document.getElementById("modal-footer");
 
   function closeModal() {
     modalBackdrop.classList.remove("visible");
     modalBody.innerHTML = "";
+    modalFooter.innerHTML = "";
+    modalFooter.style.display = "none";
   }
 
   modalClose.addEventListener("click", closeModal);
   modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop) closeModal(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
 
-  async function showTemplateRules(name) {
-    modalTitle.textContent = `Rules — ${name}`;
-    modalBody.innerHTML = `<div style="color:var(--text-dim);font-size:.85rem">Loading…</div>`;
-    modalBackdrop.classList.add("visible");
-    let info;
-    try {
-      info = await invoke("get_template_rules", { templateName: name });
-    } catch (err) {
-      modalBody.innerHTML = `<div style="color:var(--red)">Failed to load: ${err}</div>`;
-      return;
-    }
-    const parts = [];
+  function renderModalInfo(info) {
     const settingsTags = [
       `<span class="modal-tag ${info.recursive ? 'on' : ''}">recursive: ${info.recursive}</span>`,
       ...(info.unmatched_destination ? [`<span class="modal-tag on">unmatched → ${escHtml(info.unmatched_destination)}</span>`] : [])
     ];
-    parts.push(`<div><div class="modal-section-title">Settings</div><div class="modal-settings">${settingsTags.join("")}</div></div>`);
     const rulesHtml = info.rules.map(r => {
       const exts = r.extensions.map(e => `<span class="ext-chip">.${escHtml(e)}</span>`).join("");
       const meta = [];
@@ -1260,8 +1401,59 @@
         ${meta.length ? `<div class="rule-meta">${meta.join(" · ")}</div>` : ""}
       </div>`;
     }).join("");
-    parts.push(`<div><div class="modal-section-title">${info.rules.length} Rule${info.rules.length !== 1 ? "s" : ""}</div><div style="display:flex;flex-direction:column;gap:6px">${rulesHtml}</div></div>`);
-    modalBody.innerHTML = parts.join("");
+    modalBody.innerHTML = `
+      <div><div class="modal-section-title">Settings</div><div class="modal-settings">${settingsTags.join("")}</div></div>
+      <div><div class="modal-section-title">${info.rules.length} Rule${info.rules.length !== 1 ? "s" : ""}</div><div style="display:flex;flex-direction:column;gap:6px">${rulesHtml}</div></div>
+    `;
+  }
+
+  async function showTemplateRules(name) {
+    modalTitle.textContent = `Rules — ${name}`;
+    modalBody.innerHTML = `<div style="color:var(--text-dim);font-size:.85rem">Loading…</div>`;
+    modalFooter.style.display = "none";
+    modalBackdrop.classList.add("visible");
+    let info;
+    try {
+      info = await invoke("get_template_rules", { templateName: name });
+    } catch (err) {
+      modalBody.innerHTML = `<div style="color:var(--red)">Failed to load: ${err}</div>`;
+      return;
+    }
+    renderModalInfo(info);
+  }
+
+  async function showFolderRules() {
+    const folderName = currentFolder.split(/[\\/]/).filter(Boolean).pop() || "config";
+    modalTitle.textContent = `Rules — ${folderName} (local config)`;
+    modalBody.innerHTML = `<div style="color:var(--text-dim);font-size:.85rem">Loading…</div>`;
+    modalFooter.innerHTML = "";
+    modalFooter.style.display = "flex";
+    modalBackdrop.classList.add("visible");
+    let info;
+    try {
+      info = await invoke("get_folder_config_info", { folderPath: currentFolder });
+    } catch (err) {
+      modalBody.innerHTML = `<div style="color:var(--red)">Failed to load: ${err}</div>`;
+      return;
+    }
+    renderModalInfo(info);
+    const btnEdit = document.createElement("button");
+    btnEdit.className = "btn btn-secondary btn-sm";
+    btnEdit.textContent = "Edit in Templates tab";
+    btnEdit.addEventListener("click", async () => {
+      btnEdit.disabled = true;
+      try {
+        await invoke("save_as_template", { folderPath: currentFolder, templateName: folderName });
+        closeModal();
+        document.querySelector('[data-view="templates"]').click();
+        await loadTmplList(folderName);
+        await selectTemplate(folderName);
+      } catch (e) {
+        modalBody.innerHTML += `<div style="color:var(--red);margin-top:8px">Failed: ${e}</div>`;
+        btnEdit.disabled = false;
+      }
+    });
+    modalFooter.appendChild(btnEdit);
   }
 
   // ────────────────────────────────────────────────────────────────────────────

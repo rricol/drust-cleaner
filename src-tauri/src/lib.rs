@@ -5,6 +5,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
+            commands::open_folder,
             commands::check_config,
             commands::generate_default_config,
             commands::run_cleaner,
@@ -15,6 +16,7 @@ pub fn run() {
             commands::get_template_rules,
             commands::save_template_content,
             commands::rename_template,
+            commands::get_folder_config_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
