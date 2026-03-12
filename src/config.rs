@@ -41,11 +41,6 @@ pub struct Settings {
     #[serde(default)]
     pub recursive: bool,
 
-    /// When true, skip files that are currently open / locked.
-    /// Defaults to false (the engine will still attempt the move and surface the error).
-    #[serde(default)]
-    pub skip_locked: bool,
-
     /// If set, files that don't match any rule are moved into this folder.
     pub unmatched_destination: Option<String>,
 
