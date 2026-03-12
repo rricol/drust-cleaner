@@ -1462,6 +1462,11 @@
             }
             #update-badge.visible { display: flex; }
             #update-badge:hover { background: rgba(255,193,7,0.18); }
+            #update-badge.error {
+                color: var(--red);
+                background: rgba(244,67,54,0.1);
+                border-color: rgba(244,67,54,0.35);
+            }
         </style>
     </head>
     <body>
@@ -1700,7 +1705,7 @@
         </div>
 
         <footer>
-            <span>Drust Cleaner v1.0.0</span>
+            <span id="app-version">Drust Cleaner</span>
             <button id="update-badge" title="Click to install update">⬆ Update available</button>
             <a href="https://github.com/rricol/drust-cleaner" target="_blank">github ↗</a>
         </footer>
@@ -2713,13 +2718,25 @@
                 try {
                     await invoke("install_update");
                 } catch (e) {
-                    updateBadge.textContent = "⬆ Update available";
+                    console.error("Update failed:", e);
+                    updateBadge.textContent = "⚠ Update failed";
                     updateBadge.style.pointerEvents = "";
-                    setConfigStatus(`Update failed: ${e}`, "err");
+                    updateBadge.title = `Click to retry — Error: ${e}`;
+                    updateBadge.classList.add("error");
+                    setTimeout(() => {
+                        updateBadge.textContent = "⬆ Update available";
+                        updateBadge.classList.remove("error");
+                        updateBadge.title = `v${pendingUpdateVersion} available — click to install`;
+                    }, 4000);
                 }
             });
 
-            // Check after a short delay to not block startup
+            // Load app version into footer
+            invoke("get_app_version").then((v) => {
+                document.getElementById("app-version").textContent = `Drust Cleaner v${v}`;
+            });
+
+            // Check for update after a short delay to not block startup
             setTimeout(checkForUpdate, 3000);
         </script>
     </body>
