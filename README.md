@@ -1,6 +1,6 @@
-# cli-folder-cleaner
+# Folder Cleaner
 
-A fast, rule-driven CLI tool written in Rust that organises files in a directory by moving them into sub-folders according to rules you define in a TOML configuration file.
+A rule-driven file organiser written in Rust, available as both a **CLI tool** and a **desktop GUI app**. Point it at a directory, define rules in a TOML file, and it moves files into sub-folders automatically.
 
 ---
 
@@ -8,58 +8,99 @@ A fast, rule-driven CLI tool written in Rust that organises files in a directory
 
 - **Rule-based organisation** — define as many rules as you need in a simple TOML file
 - **Multiple match conditions** — filter by file extension, filename glob pattern, and/or file size range
+- **Per-rule exclude lists** — skip specific files or glob patterns within a rule
+- **Global ignore list** — skip files before any rule is checked
 - **First-match-wins** — rules are evaluated top-to-bottom; the first matching rule applies
-- **Dry-run mode** — preview every planned move before committing to it
+- **Dry-run mode** — preview every planned move before committing
 - **Recursive scanning** — optionally descend into sub-directories
-- **Unmatched file catch-all** — optionally funnel files that matched no rule into a dedicated folder
-- **Nested destinations** — destination paths like `Documents/PDFs` are created automatically
+- **Unmatched catch-all** — funnel files that matched no rule into a dedicated folder
+- **Nested destinations** — paths like `Documents/PDFs` are created automatically
 - **Cross-device safe** — falls back to copy + delete when a simple rename would fail
-- **Coloured output** — clear, colour-coded terminal feedback at a glance
+- **Desktop GUI** — native app with a visual rule editor and template management
 
 ---
 
-## Installation
+## Desktop GUI
 
-### From source (requires [Rust](https://rustup.rs))
+The GUI is built with [Tauri](https://tauri.app) and ships as a native desktop application. It wraps the same `cleaner-core` engine as the CLI.
 
-```cli-folder-cleaner/README.md#L1-1
+### Building
+
+Requires [Rust](https://rustup.rs) and the [Tauri prerequisites](https://tauri.app/start/prerequisites/) for your platform.
+
+```sh
+cargo tauri dev        # run in development mode
+cargo tauri build      # produce a release bundle
+```
+
+Or build just the binary:
+
+```sh
+cargo build -p cleaner-gui --release
+./target/release/cleaner-gui
+```
+
+### Cleaner tab
+
+- Pick a target folder — the app detects whether a `cleaner.toml` is already present
+- **Generate Default Config** — writes a sensible starter config if none exists
+- **Dry Run** — shows every planned move in the output log without touching any file
+- **Run Now** — executes the moves and displays a summary (files moved / errors)
+- **Templates card** — save the current folder's config as a named template, or apply / view / delete existing ones
+
+### Templates tab
+
+A dedicated page for creating and managing reusable configurations.
+
+**Sidebar** lists all saved templates. Each row shows:
+- Click the name to open it in the editor
+- **⧉** — duplicate the template (saved as `"<name> copy"`)
+- **×** — delete the template
+
+**Editor panel** lets you build a template visually:
+
+| Section | Fields |
+|---|---|
+| Name | Editable at the top; changing it renames the file on Save |
+| Settings | Recursive toggle, Unmatched destination folder |
+| Rules | One card per rule — see below |
+
+Each **rule card** contains:
+- **Name** and **Destination** folder
+- **Extensions** — chip input; type an extension and press Enter or comma to add, click a chip to remove
+- **Exclude** — chip input for filenames or glob patterns to skip within this rule (e.g. `*.bak`, `draft_*`)
+- **Optional filters** (collapsed) — name pattern (glob), min/max size in MB
+- **↑ / ↓** chevron buttons to reorder rules
+- **×** to delete the rule
+
+A yellow dot appears next to the Save button whenever there are unsaved changes. The editor validates that every rule has a name, a destination, and at least one condition before saving.
+
+**Templates are stored at:**
+
+| Platform | Path |
+|---|---|
+| macOS | `~/Library/Application Support/com.folder-cleaner.app/templates/` |
+| Linux | `~/.local/share/com.folder-cleaner.app/templates/` |
+| Windows | `%APPDATA%\com.folder-cleaner.app\templates\` |
+
+Each template is a standard `cleaner.toml`-compatible TOML file and can be edited by hand.
+
+---
+
+## CLI
+
+### Installation
+
+```sh
 git clone https://github.com/rricol/cli-folder-cleaner.git
 cd cli-folder-cleaner
-cargo build --release
+cargo install --path crates/cleaner-cli
 ```
 
-The compiled binary will be at `target/release/cli-folder-cleaner`.
+### Usage
 
-To install it into your Cargo bin directory so it is available system-wide:
-
-```cli-folder-cleaner/README.md#L1-1
-cargo install --path .
 ```
-
----
-
-## Quick Start
-
-1. Copy `cleaner.toml.example` to the directory you want to clean and rename it `cleaner.toml`.
-2. Edit the rules to match your needs.
-3. Run a dry-run first to preview what would happen:
-
-```cli-folder-cleaner/README.md#L1-1
-cli-folder-cleaner --target ~/Downloads --dry-run --verbose
-```
-
-4. If everything looks right, run it for real:
-
-```cli-folder-cleaner/README.md#L1-1
-cli-folder-cleaner --target ~/Downloads
-```
-
----
-
-## Usage
-
-```cli-folder-cleaner/README.md#L1-1
-cli-folder-cleaner [OPTIONS]
+cleaner-cli [OPTIONS]
 
 Options:
   -t, --target <DIR>    Directory to clean [default: current working directory]
@@ -72,203 +113,155 @@ Options:
 
 ### Examples
 
-```cli-folder-cleaner/README.md#L1-1
+```sh
 # Clean the current directory using ./cleaner.toml
-cli-folder-cleaner
+cleaner-cli
 
 # Clean a specific directory
-cli-folder-cleaner --target ~/Downloads
+cleaner-cli --target ~/Downloads
 
 # Use a config file stored elsewhere
-cli-folder-cleaner --target ~/Downloads --config ~/.config/cleaner.toml
+cleaner-cli --target ~/Downloads --config ~/.config/cleaner.toml
 
 # Dry-run with verbose output
-cli-folder-cleaner --target ~/Downloads --dry-run --verbose
+cleaner-cli --target ~/Downloads --dry-run --verbose
 ```
 
----
+### Output
 
-## Configuration File
-
-By default the tool looks for a file named `cleaner.toml` inside the target directory. You can override this with `--config`.
-
-The file has two sections: an optional `[settings]` block and one or more `[[rules]]` blocks.
-
-### Global Settings
-
-```cli-folder-cleaner/cleaner.toml.example#L10-16
-[settings]
-
-# Set to true to also scan sub-directories (default: false).
-recursive = false
-
-# Any file that does not match any rule will be moved here (relative to the
-# target directory). Comment out or remove to leave unmatched files in place.
-# unmatched_destination = "_Unsorted"
+**Dry-run**
 ```
-
-| Key | Type | Default | Description |
-|---|---|---|---|
-| `recursive` | bool | `false` | Recurse into sub-directories when scanning |
-| `unmatched_destination` | string | — | Folder for files that matched no rule. Omit to leave them in place. |
-| `ignore` | string list | `[]` | Filenames or glob patterns skipped by **every** rule. The config file itself (`cleaner.toml`) is always ignored automatically, even without this setting. |
-
-### Rules
-
-Each `[[rules]]` block defines one rule. Rules are evaluated **top-to-bottom**; the **first matching rule wins**.
-
-```cli-folder-cleaner/cleaner.toml.example#L28-32
-[[rules]]
-name        = "Images"
-destination = "Images"
-extensions  = ["jpg", "jpeg", "png", "gif", "webp", "bmp", "tiff", "tif", "svg", "ico", "heic", "heif"]
-```
-
-#### Rule Fields
-
-| Field | Required | Description |
-|---|---|---|
-| `name` | ✅ | Human-readable label shown in CLI output |
-| `destination` | ✅ | Target sub-folder relative to the target directory. Nested paths (e.g. `Documents/PDFs`) are supported and created automatically. |
-| `extensions` | ✴️ | List of file extensions to match, without the leading dot. Case-insensitive. E.g. `["jpg", "PNG"]`. |
-| `name_pattern` | ✴️ | Glob pattern matched against the **filename only**. Supports `*` (any characters) and `?` (single character). E.g. `"invoice_*"`. |
-| `min_size_mb` | ✴️ | Minimum file size in megabytes (inclusive). |
-| `max_size_mb` | ✴️ | Maximum file size in megabytes (inclusive). |
-| `ignore` | string list | `[]` | Filenames or glob patterns that prevent this rule from matching, even if all other conditions pass. Useful to carve out exceptions within a rule. |
-
-✴️ At least one condition field is required per rule. All specified conditions are combined with **logical AND**.
-
-#### Condition Logic
-
-- If a rule specifies both `extensions` and `name_pattern`, a file must satisfy **both** to match.
-- If a rule specifies both `min_size_mb` and `max_size_mb`, the file size must fall within that range.
-- Combining all four conditions is valid — all must hold.
-
-#### Ignore Lists
-
-There are two levels of ignore, both accepting exact filenames or glob patterns (matched against the filename only):
-
-| Level | Where | Effect |
-|---|---|---|
-| **Global** | `[settings] ignore = [...]` | Skips the listed files before any rule is even checked. The config file (e.g. `cleaner.toml`) is always implicitly in this list. |
-| **Per-rule** | `[[rules]] ignore = [...]` | Skips the listed files for that specific rule only. The file can still be picked up by a later rule. |
-
-Example:
-
-```cli-folder-cleaner/cleaner.toml.example#L9-9
-[settings]
-# Skip these files globally — no rule will ever touch them
-ignore = ["README.md", ".DS_Store", "Thumbs.db", "*.lnk"]
-
-[[rules]]
-name        = "Text documents"
-destination = "Documents"
-extensions  = ["txt", "md"]
-# Keep .bak and changelog files in place even though they match the extension
-ignore      = ["*.bak", "CHANGELOG.md"]
-```
-
----
-
-## Example Configuration
-
-```cli-folder-cleaner/cleaner.toml.example#L9-161
-[settings]
-recursive = false
-# unmatched_destination = "_Unsorted"
-
-# Images — matched by extension
-[[rules]]
-name        = "Images"
-destination = "Images"
-extensions  = ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"]
-
-# Invoices — matched by filename pattern (place BEFORE the generic PDFs rule)
-[[rules]]
-name         = "Invoices"
-destination  = "Documents/Invoices"
-name_pattern = "invoice_*"
-
-# PDFs — matched by extension
-[[rules]]
-name        = "PDFs"
-destination = "Documents/PDFs"
-extensions  = ["pdf"]
-
-# Large videos — matched by extension AND minimum size
-[[rules]]
-name        = "Large Videos"
-destination = "Videos/Large"
-extensions  = ["mp4", "mkv", "mov"]
-min_size_mb = 500.0
-
-# Videos — matched by extension (catches everything not caught above)
-[[rules]]
-name        = "Videos"
-destination = "Videos"
-extensions  = ["mp4", "mkv", "mov", "avi", "wmv", "webm"]
-
-# Archives
-[[rules]]
-name        = "Archives"
-destination = "Archives"
-extensions  = ["zip", "tar", "gz", "7z", "rar"]
-```
-
-> **Tip — rule ordering matters.** Because the first matching rule wins, always place more specific rules (e.g. `invoice_*` PDFs) *before* more general ones (e.g. all PDFs). The same applies to size-filtered rules: put the large-file variant above the catch-all variant.
-
----
-
-## Output
-
-### Dry-run
-
-```cli-folder-cleaner/README.md#L1-1
-INFO  Target : /Users/you/Downloads
-INFO  Config : /Users/you/Downloads/cleaner.toml
-Dry-run mode — no files will be moved.
-
-INFO  Loaded 8 rule(s).
-
 [DRY-RUN] /Users/you/Downloads/photo.jpg → /Users/you/Downloads/Images/photo.jpg  (rule: Images)
 [DRY-RUN] /Users/you/Downloads/invoice_2024_01.pdf → /Users/you/Downloads/Documents/Invoices/invoice_2024_01.pdf  (rule: Invoices)
-[DRY-RUN] /Users/you/Downloads/archive.zip → /Users/you/Downloads/Archives/archive.zip  (rule: Archives)
 
-──────────────────────────────────────────────────
-SUMMARY 3 file(s) would be moved.
+SUMMARY  2 file(s) would be moved.
 ```
 
-### Live run
-
-```cli-folder-cleaner/README.md#L1-1
+**Live run**
+```
 MOVED /Users/you/Downloads/photo.jpg → /Users/you/Downloads/Images/photo.jpg  (rule: Images)
 MOVED /Users/you/Downloads/invoice_2024_01.pdf → /Users/you/Downloads/Documents/Invoices/invoice_2024_01.pdf  (rule: Invoices)
-MOVED /Users/you/Downloads/archive.zip → /Users/you/Downloads/Archives/archive.zip  (rule: Archives)
 
-──────────────────────────────────────────────────
-SUMMARY 3 file(s) moved, 0 error(s).
+SUMMARY  2 file(s) moved, 0 error(s).
 ```
 
 ### Exit codes
 
 | Code | Meaning |
 |---|---|
-| `0` | Success — all matched files moved (or dry-run completed) |
+| `0` | Success (or dry-run completed) |
 | `1` | Fatal error (bad arguments, config not found, parse failure) |
 | `2` | Run completed but one or more files could not be moved |
 
 ---
 
+## Configuration File
+
+By default the tool looks for `cleaner.toml` inside the target directory. Override with `--config`.
+
+### Global settings
+
+```toml
+[settings]
+recursive = false
+# unmatched_destination = "_Unsorted"
+# ignore = [".DS_Store", "Thumbs.db", "*.lnk"]
+```
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `recursive` | bool | `false` | Recurse into sub-directories |
+| `unmatched_destination` | string | — | Folder for files that matched no rule. Omit to leave them in place. |
+| `ignore` | string list | `[]` | Filenames or glob patterns skipped globally before any rule is checked. `cleaner.toml` itself is always ignored automatically. |
+
+### Rules
+
+Each `[[rules]]` block defines one rule. Rules are evaluated **top-to-bottom**; the **first matching rule wins**.
+
+```toml
+[[rules]]
+name        = "Images"
+destination = "Images"
+extensions  = ["jpg", "jpeg", "png", "gif", "webp", "bmp", "tiff", "svg"]
+```
+
+#### Rule fields
+
+| Field | Required | Description |
+|---|---|---|
+| `name` | ✅ | Human-readable label shown in output |
+| `destination` | ✅ | Target sub-folder relative to the target directory. Nested paths are created automatically. |
+| `extensions` | ✴️ | Extensions to match, no leading dot, case-insensitive. |
+| `name_pattern` | ✴️ | Glob matched against the filename only (`*`, `?`). |
+| `min_size_mb` | ✴️ | Minimum file size in MB (inclusive). |
+| `max_size_mb` | ✴️ | Maximum file size in MB (inclusive). |
+| `ignore` | — | Filenames or globs that prevent this rule from matching. The file can still be picked up by a later rule. |
+
+✴️ At least one condition is required. All specified conditions are combined with **AND**.
+
+### Example configuration
+
+```toml
+[settings]
+recursive = false
+# unmatched_destination = "_Unsorted"
+
+[[rules]]
+name        = "Images"
+destination = "Images"
+extensions  = ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"]
+
+[[rules]]
+name         = "Invoices"        # more specific — must come before generic PDFs
+destination  = "Documents/Invoices"
+name_pattern = "invoice_*"
+
+[[rules]]
+name        = "PDFs"
+destination = "Documents/PDFs"
+extensions  = ["pdf"]
+
+[[rules]]
+name        = "Large Videos"     # size-filtered variant before the catch-all
+destination = "Videos/Large"
+extensions  = ["mp4", "mkv", "mov"]
+min_size_mb = 500.0
+
+[[rules]]
+name        = "Videos"
+destination = "Videos"
+extensions  = ["mp4", "mkv", "mov", "avi", "wmv", "webm"]
+
+[[rules]]
+name        = "Archives"
+destination = "Archives"
+extensions  = ["zip", "tar", "gz", "7z", "rar"]
+ignore      = ["backup_*.zip"]   # keep backup archives in place
+```
+
+> **Rule ordering matters.** Place more specific rules (e.g. `invoice_*` PDFs) *before* broader ones (e.g. all PDFs). Place size-filtered variants before their catch-all counterparts.
+
+---
+
 ## Project Structure
 
-```cli-folder-cleaner/README.md#L1-1
+```
 cli-folder-cleaner/
-├── src/
-│   ├── main.rs        # CLI argument parsing and entry point (clap)
-│   ├── config.rs      # TOML config structs, loading, and validation
-│   └── engine.rs      # File scanning, rule matching, and move execution
-├── cleaner.toml.example  # Fully-commented example configuration
-├── Cargo.toml
+├── crates/
+│   ├── cleaner-core/          # shared engine (config, rule matching, file moves)
+│   │   └── src/
+│   │       ├── config.rs
+│   │       └── engine.rs
+│   └── cleaner-cli/           # CLI front-end (clap)
+│       └── src/main.rs
+├── src-tauri/                 # Tauri desktop GUI back-end
+│   └── src/
+│       ├── commands.rs        # Tauri commands (run, config, templates)
+│       └── lib.rs
+├── dist/
+│   └── index.html             # GUI front-end (single-file, vanilla JS)
+├── cleaner.toml.example
+├── Cargo.toml                 # workspace
 └── README.md
 ```
 
@@ -279,11 +272,12 @@ cli-folder-cleaner/
 | Crate | Purpose |
 |---|---|
 | [`clap`](https://crates.io/crates/clap) | CLI argument parsing |
-| [`serde`](https://crates.io/crates/serde) + [`toml`](https://crates.io/crates/toml) | TOML deserialisation |
-| [`glob`](https://crates.io/crates/glob) | Glob pattern matching for `name_pattern` |
+| [`serde`](https://crates.io/crates/serde) + [`toml`](https://crates.io/crates/toml) | TOML deserialisation and validation |
+| [`glob`](https://crates.io/crates/glob) | Glob pattern matching |
 | [`walkdir`](https://crates.io/crates/walkdir) | Recursive directory traversal |
 | [`colored`](https://crates.io/crates/colored) | Coloured terminal output |
-| [`anyhow`](https://crates.io/crates/anyhow) | Ergonomic error propagation |
+| [`anyhow`](https://crates.io/crates/anyhow) | Error propagation |
+| [`tauri`](https://crates.io/crates/tauri) | Desktop app framework (GUI only) |
 
 ---
 
