@@ -4,8 +4,7 @@ use std::process;
 use clap::Parser;
 use colored::Colorize;
 
-mod config;
-mod engine;
+use cleaner_core::{config, engine};
 
 /// A CLI tool that organises files in a directory according to rules defined
 /// in a TOML configuration file.
@@ -37,15 +36,10 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
 
-    // Resolve the target directory.
     let target_dir = match cli.target {
         Some(ref p) => p.clone(),
         None => std::env::current_dir().unwrap_or_else(|e| {
-            eprintln!(
-                "{} Could not determine current directory: {}",
-                "ERROR".red().bold(),
-                e
-            );
+            eprintln!("{} Could not determine current directory: {}", "ERROR".red().bold(), e);
             process::exit(1);
         }),
     };
@@ -60,15 +54,10 @@ fn main() {
     }
 
     if !target_dir.is_dir() {
-        eprintln!(
-            "{} '{}' is not a directory.",
-            "ERROR".red().bold(),
-            target_dir.display()
-        );
+        eprintln!("{} '{}' is not a directory.", "ERROR".red().bold(), target_dir.display());
         process::exit(1);
     }
 
-    // Resolve the config file path.
     let config_path = match cli.config {
         Some(ref p) => p.clone(),
         None => target_dir.join("cleaner.toml"),
@@ -85,27 +74,15 @@ fn main() {
     }
 
     if cli.verbose || cli.dry_run {
-        println!(
-            "{} Target : {}",
-            "INFO".cyan().bold(),
-            target_dir.display().to_string().white()
-        );
-        println!(
-            "{} Config : {}",
-            "INFO".cyan().bold(),
-            config_path.display().to_string().white()
-        );
+        println!("{} Target : {}", "INFO".cyan().bold(), target_dir.display().to_string().white());
+        println!("{} Config : {}", "INFO".cyan().bold(), config_path.display().to_string().white());
         if cli.dry_run {
-            println!(
-                "{}",
-                "Dry-run mode — no files will be moved.".yellow().bold()
-            );
+            println!("{}", "Dry-run mode — no files will be moved.".yellow().bold());
         }
         println!();
     }
 
-    // Load and validate the config.
-    let config = match config::load_config(&config_path) {
+    let cfg = match config::load_config(&config_path) {
         Ok(c) => c,
         Err(e) => {
             eprintln!("{} {}", "ERROR".red().bold(), e);
@@ -114,30 +91,36 @@ fn main() {
     };
 
     if cli.verbose {
-        println!(
-            "{} Loaded {} rule(s).\n",
-            "INFO".cyan().bold(),
-            config.rules.len()
-        );
+        println!("{} Loaded {} rule(s).\n", "INFO".cyan().bold(), cfg.rules.len());
     }
 
-    // Run the engine.
     let config_file_name = config_path
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("cleaner.toml")
         .to_string();
 
-    match engine::run(&target_dir, &config, &config_file_name, cli.dry_run) {
+    match engine::run(&target_dir, &cfg, &config_file_name, cli.dry_run) {
         Ok(summary) => {
+            // Print collected messages with appropriate colours.
+            for msg in &summary.messages {
+                if msg.starts_with("[DRY-RUN]") {
+                    println!("{} {}", "[DRY-RUN]".cyan().bold(), &msg[10..]);
+                } else if msg.starts_with("MOVED (unmatched)") {
+                    println!("{} {}", "MOVED (unmatched)".yellow().bold(), &msg[18..]);
+                } else if msg.starts_with("MOVED") {
+                    println!("{} {}", "MOVED".green().bold(), &msg[6..]);
+                } else if msg.starts_with("ERROR") {
+                    eprintln!("{} {}", "ERROR".red().bold(), &msg[6..]);
+                } else {
+                    println!("{}", msg.yellow());
+                }
+            }
+
             println!();
             println!("{}", "─".repeat(50).dimmed());
             if cli.dry_run {
-                println!(
-                    "{} {} file(s) would be moved.",
-                    "SUMMARY".cyan().bold(),
-                    summary.moved
-                );
+                println!("{} {} file(s) would be moved.", "SUMMARY".cyan().bold(), summary.moved);
             } else {
                 println!(
                     "{} {} file(s) moved, {} error(s).",

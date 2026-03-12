@@ -3,25 +3,6 @@ use std::fs;
 use std::path::Path;
 
 /// Top-level configuration file structure.
-///
-/// Example `cleaner.toml`:
-/// ```toml
-/// [[rules]]
-/// name = "Images"
-/// destination = "Images"
-/// extensions = ["jpg", "jpeg", "png", "gif", "webp", "svg"]
-///
-/// [[rules]]
-/// name = "Large Videos"
-/// destination = "Videos/Large"
-/// extensions = ["mp4", "mkv", "mov"]
-/// min_size_mb = 100.0
-///
-/// [[rules]]
-/// name = "Invoices"
-/// destination = "Documents/Invoices"
-/// name_pattern = "invoice_*"
-/// ```
 #[derive(Debug, Deserialize)]
 pub struct Config {
     /// Optional global settings.
@@ -37,18 +18,14 @@ pub struct Config {
 #[derive(Debug, Deserialize, Default)]
 pub struct Settings {
     /// When true, recurse into sub-directories when scanning for files.
-    /// Defaults to false (flat scan of the target directory only).
     #[serde(default)]
     pub recursive: bool,
 
     /// If set, files that don't match any rule are moved into this folder.
     pub unmatched_destination: Option<String>,
 
-    /// Global ignore list: exact filenames or glob patterns (matched against the
-    /// filename only) that are excluded from every rule.
-    /// The config file itself is always ignored automatically by the engine,
-    /// but you can add additional entries here, e.g.:
-    ///   ignore = [".DS_Store", "Thumbs.db", "*.tmp"]
+    /// Global ignore list: exact filenames or glob patterns matched against
+    /// the filename only.
     #[serde(default)]
     pub ignore: Vec<String>,
 }
@@ -59,19 +36,14 @@ pub struct Rule {
     /// Human-readable label used in log output.
     pub name: String,
 
-    /// Destination folder path, relative to the target directory being cleaned
-    /// (e.g. `"Images"` or `"Documents/PDFs"`).
+    /// Destination folder path, relative to the target directory.
     pub destination: String,
 
-    // ── Conditions ────────────────────────────────────────────────────────────
-    // All specified conditions must match for the rule to apply (logical AND).
-    /// List of file extensions to match, without the leading dot
-    /// (e.g. `["jpg", "png"]`). Case-insensitive.
+    /// List of file extensions to match (no leading dot, case-insensitive).
     #[serde(default)]
     pub extensions: Vec<String>,
 
-    /// Glob pattern matched against the file name only (not the full path),
-    /// e.g. `"invoice_*"` or `"report_202?_*"`.
+    /// Glob pattern matched against the file name only.
     pub name_pattern: Option<String>,
 
     /// Minimum file size in megabytes (inclusive).
@@ -80,19 +52,12 @@ pub struct Rule {
     /// Maximum file size in megabytes (inclusive).
     pub max_size_mb: Option<f64>,
 
-    // ── Exclusions ────────────────────────────────────────────────────────────
-    /// Per-rule ignore list: exact filenames or glob patterns (matched against
-    /// the filename only) that prevent this rule from applying to a file, even
-    /// if all other conditions match.
-    /// E.g. `ignore = ["cleaner.toml", "*.bak", "README.*"]`
+    /// Per-rule ignore list.
     #[serde(default)]
     pub ignore: Vec<String>,
 }
 
 impl Rule {
-    /// Returns true if at least one condition is specified on this rule.
-    /// A rule with no conditions would match every file, which is almost
-    /// certainly a misconfiguration.
     pub fn has_conditions(&self) -> bool {
         !self.extensions.is_empty()
             || self.name_pattern.is_some()
@@ -114,7 +79,6 @@ pub fn load_config(path: &Path) -> anyhow::Result<Config> {
     Ok(config)
 }
 
-/// Perform basic sanity checks on the parsed config.
 fn validate_config(config: &Config) -> anyhow::Result<()> {
     if config.rules.is_empty() {
         anyhow::bail!("Config file contains no rules.");
@@ -130,7 +94,7 @@ fn validate_config(config: &Config) -> anyhow::Result<()> {
         if !rule.has_conditions() {
             anyhow::bail!(
                 "Rule '{}' has no conditions (extensions, name_pattern, min_size_mb, \
-                 max_size_mb). This would match every file. Please add at least one condition.",
+                 max_size_mb). This would match every file.",
                 rule.name
             );
         }
