@@ -1061,11 +1061,28 @@ header h1 {
 /* Editor panel */
 #tmpl-editor {
     flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+#tmpl-editor-body {
+    flex: 1;
     overflow-y: auto;
     padding: 24px;
     display: flex;
     flex-direction: column;
     gap: 18px;
+}
+
+#tmpl-footer {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
 }
 
 #tmpl-placeholder {
@@ -1257,12 +1274,6 @@ header h1 {
 /* Rules tab */
 #tmpl-tab-rules {
     gap: 8px;
-}
-
-#tmpl-rules-header {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
 }
 
 #tmpl-rules-list {

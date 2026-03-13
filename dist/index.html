@@ -314,6 +314,7 @@
 
             <!-- Editor -->
             <div id="tmpl-editor">
+                <div id="tmpl-editor-body">
                 <div id="tmpl-placeholder" data-i18n="templatePlaceholder">
                     Select a template or create a new one.
                 </div>
@@ -333,13 +334,6 @@
                             data-i18n-title="unsavedChanges"
                             title="Unsaved changes"
                         ></div>
-                        <button
-                            class="btn btn-secondary"
-                            id="btn-tmpl-save"
-                            data-i18n="save"
-                        >
-                            Save
-                        </button>
                     </div>
 
                     <!-- Tab bar -->
@@ -458,20 +452,31 @@
 
                     <!-- Rules tab -->
                     <div id="tmpl-tab-rules" class="tmpl-tab-content">
-                        <div id="tmpl-rules-header">
-                            <button
-                                class="btn btn-outline btn-sm"
-                                id="btn-add-rule"
-                                data-i18n="addRule"
-                            >
-                                + Add Rule
-                            </button>
-                        </div>
                         <div id="tmpl-rules-list"></div>
                     </div>
 
                     <!-- Status -->
                     <div id="tmpl-status"></div>
+                </div>
+                </div><!-- #tmpl-editor-body -->
+
+                <!-- Fixed footer -->
+                <div id="tmpl-footer" style="display:none">
+                    <button
+                        class="btn btn-outline btn-sm"
+                        id="btn-add-rule"
+                        data-i18n="addRule"
+                        style="display:none"
+                    >
+                        + Add Rule
+                    </button>
+                    <button
+                        class="btn btn-secondary"
+                        id="btn-tmpl-save"
+                        data-i18n="save"
+                    >
+                        Save
+                    </button>
                 </div>
             </div>
         </div>

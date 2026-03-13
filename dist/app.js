@@ -842,6 +842,7 @@ const keepDirsWrap = document.getElementById("keep-dirs-wrap");
 const tmplRulesList = document.getElementById("tmpl-rules-list");
 const tmplRulesCountBadge = document.getElementById("tmpl-rules-count");
 const tmplStatusEl = document.getElementById("tmpl-status");
+const tmplFooter = document.getElementById("tmpl-footer");
 const btnTmplSave = document.getElementById("btn-tmpl-save");
 const btnAddRule = document.getElementById("btn-add-rule");
 const btnNewTemplate = document.getElementById("btn-new-template");
@@ -891,6 +892,7 @@ document.querySelectorAll(".tmpl-tab").forEach((tab) => {
     document
       .getElementById(`tmpl-tab-${tab.dataset.tab}`)
       ?.classList.add("active");
+    btnAddRule.style.display = tab.dataset.tab === "rules" ? "" : "none";
   });
 });
 
@@ -996,10 +998,22 @@ function highlightSidebarItem(name) {
 }
 
 // ── Select / load template ─────────────────────────────────────────────────
-async function selectTemplate(name) {
-  highlightSidebarItem(name);
+function showTmplForm() {
   tmplPlaceholder.style.display = "none";
   tmplForm.classList.add("visible");
+  tmplFooter.style.display = "flex";
+  btnAddRule.style.display = document.querySelector('.tmpl-tab[data-tab="rules"].active') ? "" : "none";
+}
+
+function hideTmplForm() {
+  tmplForm.classList.remove("visible");
+  tmplFooter.style.display = "none";
+  tmplPlaceholder.style.display = "";
+}
+
+async function selectTemplate(name) {
+  highlightSidebarItem(name);
+  showTmplForm();
   setTmplStatus("");
 
   let info;
@@ -1038,8 +1052,7 @@ async function selectTemplate(name) {
 // ── New template ───────────────────────────────────────────────────────────
 btnNewTemplate.addEventListener("click", () => {
   highlightSidebarItem(null);
-  tmplPlaceholder.style.display = "none";
-  tmplForm.classList.add("visible");
+  showTmplForm();
   tmplOriginalName = null;
   tmplNameInput.value = "";
   tmplRecursive.checked = false;
@@ -1268,10 +1281,10 @@ function buildExtChips(wrap, extensions, idx) {
       tmplRules[idx].extensions.length
     ) {
       tmplRules[idx].extensions.pop();
-      renderRules();
-      // Refocus last ext chip's input
-      const newWrap = tmplRulesList.querySelectorAll(".ext-input-wrap")[idx];
-      if (newWrap) newWrap.querySelector(".ext-text-input")?.focus();
+      wrap.querySelectorAll(".ext-chip-editor").forEach((c, i, arr) => {
+        if (i === arr.length - 1) c.remove();
+      });
+      textInput.placeholder = tmplRules[idx].extensions.length ? "" : t("extPh");
       setTmplDirty(true);
     }
   });
@@ -1303,10 +1316,13 @@ function makeChip(ext, idx) {
     tmplRules[idx].extensions = tmplRules[idx].extensions.filter(
       (e) => e !== ext,
     );
-    renderRules();
-    // Re-focus the text input of the same card
-    const newWrap = tmplRulesList.querySelectorAll(".ext-input-wrap")[idx];
-    if (newWrap) newWrap.querySelector(".ext-text-input")?.focus();
+    const wrap = chip.parentElement;
+    chip.remove();
+    const textInput = wrap?.querySelector(".ext-text-input");
+    if (textInput) {
+      textInput.placeholder = tmplRules[idx].extensions.length ? "" : t("extPh");
+      textInput.focus();
+    }
     setTmplDirty(true);
   });
   return chip;
@@ -1333,9 +1349,10 @@ function buildIgnoreChips(wrap, ignoreList, idx) {
       tmplRules[idx].ignore.length
     ) {
       tmplRules[idx].ignore.pop();
-      renderRules();
-      const newWrap = tmplRulesList.querySelectorAll(".ignore-input-wrap")[idx];
-      if (newWrap) newWrap.querySelector(".ext-text-input")?.focus();
+      wrap.querySelectorAll(".ext-chip-editor").forEach((c, i, arr) => {
+        if (i === arr.length - 1) c.remove();
+      });
+      textInput.placeholder = tmplRules[idx].ignore.length ? "" : t("excludePh");
       setTmplDirty(true);
     }
   });
@@ -1365,9 +1382,13 @@ function makeIgnoreChip(pattern, idx) {
   chip.innerHTML = `${escHtml(pattern)}<button class="ext-chip-remove" title="Remove">×</button>`;
   chip.querySelector(".ext-chip-remove").addEventListener("click", () => {
     tmplRules[idx].ignore = tmplRules[idx].ignore.filter((p) => p !== pattern);
-    renderRules();
-    const newWrap = tmplRulesList.querySelectorAll(".ignore-input-wrap")[idx];
-    if (newWrap) newWrap.querySelector(".ext-text-input")?.focus();
+    const wrap = chip.parentElement;
+    chip.remove();
+    const textInput = wrap?.querySelector(".ext-text-input");
+    if (textInput) {
+      textInput.placeholder = tmplRules[idx].ignore.length ? "" : t("excludePh");
+      textInput.focus();
+    }
     setTmplDirty(true);
   });
   return chip;
@@ -1398,8 +1419,7 @@ async function deleteTmpl(name) {
     await invoke("delete_template", { templateName: name });
     if (tmplOriginalName === name) {
       tmplOriginalName = null;
-      tmplForm.classList.remove("visible");
-      tmplPlaceholder.style.display = "";
+      hideTmplForm();
     }
     await loadTmplList();
   } catch (err) {
