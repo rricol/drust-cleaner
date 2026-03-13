@@ -535,6 +535,7 @@ btnLinkTmpl.addEventListener("click", async () => {
       });
       linkedTemplate = selectedTemplate;
     }
+    invoke("refresh_tray_menu");
     await loadTemplateDropdown();
     setConfigStatus("");
   } catch (e) {
@@ -626,6 +627,7 @@ function renderFavDropdown() {
         e.stopPropagation();
         await invoke("remove_favorite", { folderPath: path });
         favorites = favorites.filter((f) => f !== path);
+        invoke("refresh_tray_menu");
         renderFavDropdown();
         updateFavToggle();
       });
@@ -681,6 +683,7 @@ btnFavToggle.addEventListener("click", async () => {
     await invoke("add_favorite", { folderPath: currentFolder });
     favorites = [...favorites, currentFolder];
   }
+  invoke("refresh_tray_menu");
   renderFavDropdown();
   updateFavToggle();
 });
