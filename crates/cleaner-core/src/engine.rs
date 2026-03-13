@@ -47,15 +47,11 @@ pub fn run(
     config_file_name: &str,
     dry_run: bool,
 ) -> anyhow::Result<RunSummary> {
-    let (actions, unmatched_count) = collect_actions(target_dir, config, config_file_name)?;
+    let (actions, unmatched_paths) = collect_actions(target_dir, config, config_file_name)?;
 
     let mut summary = RunSummary::default();
 
-    if actions.is_empty() {
-        summary.messages.push("No files matched any rule.".to_string());
-        return Ok(summary);
-    }
-
+    // Process matched files
     for action in &actions {
         if dry_run {
             summary.messages.push(format!(
@@ -88,34 +84,16 @@ pub fn run(
         }
     }
 
-    // Files with no matching rule that weren't routed to an unmatched destination.
-    summary.unmatched = if config.settings.unmatched_destination.is_none() || dry_run {
-        unmatched_count
-    } else {
-        0
-    };
+    // Process unmatched files
+    summary.unmatched = unmatched_paths.len();
 
-    // Handle unmatched files
     if config.settings.unmatched_destination.is_some() && !dry_run {
-        let matched_sources: std::collections::HashSet<&PathBuf> =
-            actions.iter().map(|a| &a.source).collect();
-
-        let unmatched = collect_files(target_dir, &config.settings)
-            .into_iter()
-            .filter(|p| {
-                if matched_sources.contains(p) {
-                    return false;
-                }
-                let file_name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
-                !is_ignored(file_name, &config.settings.ignore) && file_name != config_file_name
-            })
-            .collect::<Vec<_>>();
-
+        // Move unmatched files to the catch-all folder
         let dest_name = config.settings.unmatched_destination.as_deref().unwrap();
-        for file in unmatched {
-            let dest = build_destination(target_dir, &file, dest_name)?;
+        for file in &unmatched_paths {
+            let dest = build_destination(target_dir, file, dest_name)?;
             let action = FileAction {
-                source: file,
+                source: file.clone(),
                 destination: dest,
                 rule_name: "<unmatched>".to_string(),
             };
@@ -138,6 +116,16 @@ pub fn run(
                 }
             }
         }
+        summary.unmatched = 0;
+    } else {
+        // Log unmatched files so the user can see what wasn't sorted
+        for path in &unmatched_paths {
+            summary.messages.push(format!("UNMATCHED {}", path.display()));
+        }
+    }
+
+    if actions.is_empty() && unmatched_paths.is_empty() {
+        summary.messages.push("No files found.".to_string());
     }
 
     Ok(summary)
@@ -147,15 +135,19 @@ fn collect_actions(
     target_dir: &Path,
     config: &Config,
     config_file_name: &str,
-) -> anyhow::Result<(Vec<FileAction>, usize)> {
+) -> anyhow::Result<(Vec<FileAction>, Vec<PathBuf>)> {
     let files = collect_files(target_dir, &config.settings);
     let mut actions: Vec<FileAction> = Vec::new();
-    let mut unmatched = 0usize;
+    let mut unmatched: Vec<PathBuf> = Vec::new();
 
     'file: for file_path in files {
         let file_name = file_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
         if file_name == config_file_name {
+            continue;
+        }
+
+        if config.settings.ignore_hidden && file_name.starts_with('.') {
             continue;
         }
 
@@ -183,7 +175,7 @@ fn collect_actions(
             }
         }
 
-        unmatched += 1;
+        unmatched.push(file_path);
     }
 
     Ok((actions, unmatched))

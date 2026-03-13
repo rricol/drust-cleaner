@@ -34,6 +34,7 @@ const TRANSLATIONS = {
     save: "Save",
     settingsCard: "Settings",
     recursive: "Recursive (scan sub-folders)",
+    ignoreHidden: "Ignore hidden files (.*)",
     unmatchedFiles: "Unmatched files →",
     unmatchedPh: "(none)",
     unmatchedTip:
@@ -132,6 +133,7 @@ const TRANSLATIONS = {
     save: "Sauvegarder",
     settingsCard: "Paramètres",
     recursive: "Récursif (inclure les sous-dossiers)",
+    ignoreHidden: "Ignorer les fichiers cachés (.*)",
     unmatchedFiles: "Fichiers non classés →",
     unmatchedPh: "(aucun)",
     unmatchedTip:
@@ -294,21 +296,82 @@ function clearLog() {
   logSummary.style.display = "none";
 }
 
-function appendLog(msg) {
-  const span = document.createElement("span");
-  span.className = "log-line " + classifyMsg(msg);
-  span.textContent = msg;
-  logOutput.appendChild(span);
-  logOutput.appendChild(document.createTextNode("\n"));
-  logOutput.scrollTop = logOutput.scrollHeight;
+function baseName(p) {
+  return p.replace(/\\/g, "/").split("/").pop() || p;
 }
 
-function classifyMsg(msg) {
-  if (msg.startsWith("[DRY-RUN]")) return "log-dryrun";
-  if (msg.startsWith("MOVED")) return "log-moved";
-  if (msg.startsWith("ERROR")) return "log-error";
-  if (msg.includes("WARN")) return "log-warn";
-  return "log-default";
+function parentDir(p) {
+  const parts = p.replace(/\\/g, "/").split("/");
+  parts.pop();
+  return parts.join("/") + "/";
+}
+
+function buildLogEntry(msg) {
+  const div = document.createElement("div");
+
+  const dryMatch = msg.match(/^\[DRY-RUN\] (.+) → (.+)  \(rule: (.+)\)$/);
+  const movedMatch = msg.match(/^MOVED (.+) → (.+)  \(rule: (.+)\)$/);
+  const movedUnmatch = msg.match(/^MOVED \(unmatched\) (.+) → (.+)$/);
+  const errorMatch = msg.match(/^ERROR (.+): (.+)$/);
+  const unmatchedMatch = msg.match(/^UNMATCHED (.+)$/);
+
+  if (dryMatch || movedMatch) {
+    const [, src, dst, rule] = dryMatch || movedMatch;
+    const isDry = !!dryMatch;
+    div.className = "log-entry " + (isDry ? "log-entry-dry" : "log-entry-moved");
+    div.innerHTML =
+      `<span class="log-prefix">${isDry ? "~" : "✓"}</span>` +
+      `<span class="log-body">` +
+        `<span class="log-row1">` +
+          `<span class="log-filename">${escHtml(baseName(src))}</span>` +
+          `<span class="log-rule-tag">${escHtml(rule)}</span>` +
+        `</span>` +
+        `<span class="log-dest">→ ${escHtml(parentDir(dst))}</span>` +
+      `</span>`;
+  } else if (movedUnmatch) {
+    const [, src, dst] = movedUnmatch;
+    div.className = "log-entry log-entry-moved";
+    div.innerHTML =
+      `<span class="log-prefix">✓</span>` +
+      `<span class="log-body">` +
+        `<span class="log-row1">` +
+          `<span class="log-filename">${escHtml(baseName(src))}</span>` +
+          `<span class="log-rule-tag log-rule-tag-other">other</span>` +
+        `</span>` +
+        `<span class="log-dest">→ ${escHtml(parentDir(dst))}</span>` +
+      `</span>`;
+  } else if (errorMatch) {
+    const [, src, errMsg] = errorMatch;
+    div.className = "log-entry log-entry-error";
+    div.innerHTML =
+      `<span class="log-prefix">✗</span>` +
+      `<span class="log-body">` +
+        `<span class="log-row1"><span class="log-filename">${escHtml(baseName(src))}</span></span>` +
+        `<span class="log-dest log-error-msg">${escHtml(errMsg)}</span>` +
+      `</span>`;
+  } else if (unmatchedMatch) {
+    const [, src] = unmatchedMatch;
+    div.className = "log-entry log-entry-unmatched";
+    div.innerHTML =
+      `<span class="log-prefix">?</span>` +
+      `<span class="log-body">` +
+        `<span class="log-row1"><span class="log-filename">${escHtml(baseName(src))}</span></span>` +
+      `</span>`;
+  } else {
+    div.className = "log-entry log-entry-default";
+    div.innerHTML =
+      `<span class="log-prefix">·</span>` +
+      `<span class="log-body">` +
+        `<span class="log-row1"><span class="log-filename">${escHtml(msg)}</span></span>` +
+      `</span>`;
+  }
+
+  return div;
+}
+
+function appendLog(msg) {
+  logOutput.appendChild(buildLogEntry(msg));
+  logOutput.scrollTop = logOutput.scrollHeight;
 }
 
 // ── Config card (folder-template binding) ────────────────────────────────
@@ -585,7 +648,6 @@ async function runWithTemplate(dryRun) {
   [btnDryRun, btnRunNow].forEach((b) => (b.disabled = true));
   clearLog();
   logCard.classList.add("visible");
-  appendLog(dryRun ? t("startingDryRun") : t("startingRun"));
   try {
     const result = await invoke("run_with_template", {
       folderPath: currentFolder,
@@ -639,6 +701,7 @@ document.addEventListener("keydown", (e) => {
 function renderModalInfo(info) {
   const settingsTags = [
     `<span class="modal-tag ${info.recursive ? "on" : ""}">recursive: ${info.recursive}</span>`,
+    `<span class="modal-tag ${info.ignore_hidden ? "on" : ""}">ignore hidden: ${info.ignore_hidden}</span>`,
     ...(info.unmatched_destination
       ? [
           `<span class="modal-tag on">unmatched → ${escHtml(info.unmatched_destination)}</span>`,
@@ -700,6 +763,7 @@ const tmplForm = document.getElementById("tmpl-form");
 const tmplNameInput = document.getElementById("tmpl-name-input");
 const tmplDirtyDot = document.getElementById("tmpl-dirty-dot");
 const tmplRecursive = document.getElementById("tmpl-recursive");
+const tmplIgnoreHidden = document.getElementById("tmpl-ignore-hidden");
 const tmplUnmatched = document.getElementById("tmpl-unmatched");
 const tmplRulesList = document.getElementById("tmpl-rules-list");
 const tmplStatusEl = document.getElementById("tmpl-status");
@@ -801,6 +865,7 @@ async function selectTemplate(name) {
   tmplOriginalName = name;
   tmplNameInput.value = name;
   tmplRecursive.checked = info.recursive;
+  tmplIgnoreHidden.checked = info.ignore_hidden;
   tmplUnmatched.value = info.unmatched_destination ?? "";
   tmplRules = info.rules.map((r) => ({
     name: r.name,
@@ -837,6 +902,7 @@ btnNewTemplate.addEventListener("click", () => {
   el.addEventListener("input", () => setTmplDirty(true)),
 );
 tmplRecursive.addEventListener("change", () => setTmplDirty(true));
+tmplIgnoreHidden.addEventListener("change", () => setTmplDirty(true));
 
 // ── Rules rendering ────────────────────────────────────────────────────────
 function renderRules() {
@@ -1109,9 +1175,10 @@ function q(s) {
   return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
-function buildTomlFromData(recursive, unmatched, rules) {
+function buildTomlFromData(recursive, ignoreHidden, unmatched, rules) {
   let out = "[settings]\n";
   out += `recursive = ${recursive}\n`;
+  out += `ignore_hidden = ${ignoreHidden}\n`;
   if (unmatched.trim())
     out += `unmatched_destination = "${q(unmatched.trim())}"\n`;
   out += "\n";
@@ -1135,6 +1202,7 @@ function buildTomlFromData(recursive, unmatched, rules) {
 function buildToml() {
   return buildTomlFromData(
     tmplRecursive.checked,
+    tmplIgnoreHidden.checked,
     tmplUnmatched.value,
     tmplRules,
   );
@@ -1168,6 +1236,7 @@ async function duplicateTmpl(name) {
 
   const toml = buildTomlFromData(
     info.recursive,
+    info.ignore_hidden,
     info.unmatched_destination ?? "",
     rules,
   );

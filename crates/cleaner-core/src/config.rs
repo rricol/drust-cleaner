@@ -15,7 +15,7 @@ pub struct Config {
 }
 
 /// Global settings that apply to the whole run.
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize)]
 pub struct Settings {
     /// When true, recurse into sub-directories when scanning for files.
     #[serde(default)]
@@ -28,6 +28,25 @@ pub struct Settings {
     /// the filename only.
     #[serde(default)]
     pub ignore: Vec<String>,
+
+    /// When true (default), files whose names start with '.' are skipped.
+    #[serde(default = "default_true")]
+    pub ignore_hidden: bool,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            recursive: false,
+            unmatched_destination: None,
+            ignore: Vec::new(),
+            ignore_hidden: true,
+        }
+    }
+}
+
+fn default_true() -> bool {
+    true
 }
 
 /// A single organisation rule.

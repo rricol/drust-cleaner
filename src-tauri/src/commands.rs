@@ -150,6 +150,7 @@ pub struct TemplateRule {
 pub struct TemplateInfo {
     pub recursive: bool,
     pub unmatched_destination: Option<String>,
+    pub ignore_hidden: bool,
     pub rules: Vec<TemplateRule>,
 }
 
@@ -279,6 +280,7 @@ pub fn get_folder_config_info(folder_path: String) -> Result<TemplateInfo, Strin
     Ok(TemplateInfo {
         recursive: cfg.settings.recursive,
         unmatched_destination: cfg.settings.unmatched_destination,
+        ignore_hidden: cfg.settings.ignore_hidden,
         rules: cfg
             .rules
             .into_iter()
@@ -306,6 +308,7 @@ pub fn get_template_rules(
     Ok(TemplateInfo {
         recursive: cfg.settings.recursive,
         unmatched_destination: cfg.settings.unmatched_destination,
+        ignore_hidden: cfg.settings.ignore_hidden,
         rules: cfg
             .rules
             .into_iter()
@@ -442,8 +445,7 @@ pub fn run_with_template(
     let target = PathBuf::from(&folder_path);
     let template_path = templates_dir(&app)?.join(format!("{template_name}.toml"));
     let cfg = config::load_config(&template_path).map_err(|e| e.to_string())?;
-    let config_name = format!("{template_name}.toml");
-    let summary = engine::run(&target, &cfg, &config_name, dry_run).map_err(|e| e.to_string())?;
+    let summary = engine::run(&target, &cfg, "cleaner.toml", dry_run).map_err(|e| e.to_string())?;
     Ok(CleanResult {
         messages: summary.messages,
         moved: summary.moved,
