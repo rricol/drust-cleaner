@@ -14,6 +14,7 @@ pub fn run() {
             commands::check_update,
             commands::install_update,
             commands::open_folder,
+            commands::open_url,
             commands::check_config,
             commands::generate_default_config,
             commands::run_cleaner,

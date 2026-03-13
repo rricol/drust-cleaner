@@ -14,6 +14,7 @@ pub struct CleanResult {
     pub messages: Vec<String>,
     pub moved: usize,
     pub errors: usize,
+    pub unmatched: usize,
 }
 
 /// Info about an available update returned to the frontend.
@@ -83,6 +84,22 @@ pub fn open_folder(folder_path: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+pub fn open_url(url: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    let cmd = "open";
+    #[cfg(target_os = "windows")]
+    let cmd = "start";
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    let cmd = "xdg-open";
+
+    std::process::Command::new(cmd)
+        .arg(&url)
+        .spawn()
+        .map_err(|e| format!("Failed to open URL: {e}"))?;
+    Ok(())
+}
+
 /// Return true if `cleaner.toml` exists inside the given folder.
 #[tauri::command]
 pub fn check_config(folder_path: String) -> bool {
@@ -112,6 +129,7 @@ pub fn run_cleaner(folder_path: String, dry_run: bool) -> Result<CleanResult, St
         messages: summary.messages,
         moved: summary.moved,
         errors: summary.errors,
+        unmatched: summary.unmatched,
     })
 }
 
@@ -381,6 +399,7 @@ pub fn run_with_template(
         messages: summary.messages,
         moved: summary.moved,
         errors: summary.errors,
+        unmatched: summary.unmatched,
     })
 }
 

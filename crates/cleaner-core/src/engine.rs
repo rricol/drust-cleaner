@@ -23,6 +23,8 @@ pub struct RunSummary {
     pub moved: usize,
     pub skipped: usize,
     pub errors: usize,
+    /// Files that didn't match any rule and weren't moved to an unmatched destination.
+    pub unmatched: usize,
     /// Log messages produced during the run (plain text, no ANSI codes).
     pub messages: Vec<String>,
 }
@@ -45,7 +47,7 @@ pub fn run(
     config_file_name: &str,
     dry_run: bool,
 ) -> anyhow::Result<RunSummary> {
-    let actions = collect_actions(target_dir, config, config_file_name)?;
+    let (actions, unmatched_count) = collect_actions(target_dir, config, config_file_name)?;
 
     let mut summary = RunSummary::default();
 
@@ -85,6 +87,13 @@ pub fn run(
             }
         }
     }
+
+    // Files with no matching rule that weren't routed to an unmatched destination.
+    summary.unmatched = if config.settings.unmatched_destination.is_none() || dry_run {
+        unmatched_count
+    } else {
+        0
+    };
 
     // Handle unmatched files
     if config.settings.unmatched_destination.is_some() && !dry_run {
@@ -138,9 +147,10 @@ fn collect_actions(
     target_dir: &Path,
     config: &Config,
     config_file_name: &str,
-) -> anyhow::Result<Vec<FileAction>> {
+) -> anyhow::Result<(Vec<FileAction>, usize)> {
     let files = collect_files(target_dir, &config.settings);
     let mut actions: Vec<FileAction> = Vec::new();
+    let mut unmatched = 0usize;
 
     'file: for file_path in files {
         let file_name = file_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
@@ -172,9 +182,11 @@ fn collect_actions(
                 continue 'file;
             }
         }
+
+        unmatched += 1;
     }
 
-    Ok(actions)
+    Ok((actions, unmatched))
 }
 
 fn collect_files(target_dir: &Path, settings: &Settings) -> Vec<PathBuf> {
