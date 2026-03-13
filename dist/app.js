@@ -48,6 +48,7 @@ const TRANSLATIONS = {
     moveDown: "Move down",
     extensions: "Extensions",
     exclude: "Exclude",
+    datePlaceholders: "Date",
     optionalFilters: "Optional filters",
     namePattern: "Name pattern",
     namePatternPh: "e.g. *.log",
@@ -149,6 +150,7 @@ const TRANSLATIONS = {
     moveDown: "Descendre",
     extensions: "Extensions",
     exclude: "Exclure",
+    datePlaceholders: "Date",
     optionalFilters: "Filtres optionnels",
     namePattern: "Motif de nom",
     namePatternPh: "ex. *.log",
@@ -940,6 +942,15 @@ function buildRuleCard(rule, idx) {
           <span class="rule-field-label">${t("exclude")}</span>
           <div class="ext-input-wrap ignore-input-wrap" data-idx="${idx}"></div>
         </div>
+        <div class="rule-field-row rule-date-row">
+          <span class="rule-field-label">${t("datePlaceholders")}</span>
+          <div class="date-ph-chips">
+            <button class="date-ph-chip" data-ph="{year}">{year}</button>
+            <button class="date-ph-chip" data-ph="{month}">{month}</button>
+            <button class="date-ph-chip" data-ph="{month_num}">{month_num}</button>
+            <button class="date-ph-chip" data-ph="{day}">{day}</button>
+          </div>
+        </div>
         <details class="rule-optional">
           <summary>${t("optionalFilters")}</summary>
           <div class="rule-optional-body">
@@ -988,6 +999,18 @@ function buildRuleCard(rule, idx) {
   card.querySelector(".rule-max-inp").addEventListener("input", (e) => {
     tmplRules[idx].maxSizeMb = e.target.value;
     setTmplDirty(true);
+  });
+
+  // Date placeholder chips
+  const destInp = card.querySelector(".rule-dest-inp");
+  card.querySelectorAll(".date-ph-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const sep = destInp.value && !destInp.value.endsWith("/") ? "/" : "";
+      destInp.value += sep + chip.dataset.ph;
+      tmplRules[idx].destination = destInp.value;
+      setTmplDirty(true);
+      destInp.focus();
+    });
   });
 
   // Delete rule

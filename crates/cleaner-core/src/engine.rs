@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use chrono::{DateTime, Local};
+
 use glob::Pattern;
 use walkdir::WalkDir;
 
@@ -162,7 +164,8 @@ fn collect_actions(
 
         for rule in &config.rules {
             if matches_rule(rule, &file_path, &metadata) {
-                let destination = build_destination(target_dir, &file_path, &rule.destination)?;
+                let resolved = resolve_date_placeholders(&rule.destination, &metadata);
+                let destination = build_destination(target_dir, &file_path, &resolved)?;
                 if file_path.parent() == destination.parent() {
                     continue 'file;
                 }
@@ -235,6 +238,28 @@ fn matches_rule(rule: &Rule, file_path: &Path, metadata: &fs::Metadata) -> bool 
     }
 
     true
+}
+
+/// Resolve `{year}`, `{month}`, `{month_num}`, `{day}` placeholders in a
+/// destination path using the file's modification date (falls back to creation
+/// date, then to the current time).
+fn resolve_date_placeholders(destination: &str, metadata: &fs::Metadata) -> String {
+    if !destination.contains('{') {
+        return destination.to_string();
+    }
+
+    let system_time = metadata
+        .modified()
+        .or_else(|_| metadata.created())
+        .unwrap_or(std::time::SystemTime::now());
+
+    let dt: DateTime<Local> = system_time.into();
+
+    destination
+        .replace("{year}", &dt.format("%Y").to_string())
+        .replace("{month}", &dt.format("%B").to_string())
+        .replace("{month_num}", &dt.format("%m").to_string())
+        .replace("{day}", &dt.format("%d").to_string())
 }
 
 fn build_destination(
