@@ -13,6 +13,7 @@
     --accent: #e94560;
     --accent2: #533483;
     --accent2-icon: #9b72e8;
+    --accent-chip-text: #c8b8f0;
     --text: #eaeaea;
     --text-dim: #8892a4;
     --green: #4caf50;
@@ -21,6 +22,50 @@
     --cyan: #00bcd4;
     --radius: 10px;
     --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+/* ── Color palettes (dark mode) ── */
+html[data-palette="midnight"] {
+    --bg: #1a1a2e; --surface: #16213e; --border: #0f3460; --text-dim: #8892a4;
+}
+html[data-palette="slate"] {
+    --bg: #0f172a; --surface: #1e293b; --border: #334155; --text-dim: #94a3b8;
+}
+html[data-palette="zinc"] {
+    --bg: #18181b; --surface: #27272a; --border: #3f3f46; --text-dim: #a1a1aa;
+}
+html[data-palette="forest"] {
+    --bg: #0a1a0f; --surface: #0f2517; --border: #1e4a2a; --text-dim: #86a899;
+}
+html[data-palette="wine"] {
+    --bg: #1f1013; --surface: #2a1821; --border: #4a2535; --text-dim: #a89298;
+}
+/* Light theme always overrides palette backgrounds */
+
+/* ── Accent colors ── */
+/* rose = :root default */
+html[data-accent="violet"] {
+    --accent: #7c3aed; --accent2: #5b21b6; --accent2-icon: #a78bfa; --accent-chip-text: #ddd6fe;
+}
+html[data-accent="blue"] {
+    --accent: #2563eb; --accent2: #1d4ed8; --accent2-icon: #60a5fa; --accent-chip-text: #bfdbfe;
+}
+html[data-accent="teal"] {
+    --accent: #0891b2; --accent2: #0e7490; --accent2-icon: #22d3ee; --accent-chip-text: #a5f3fc;
+}
+html[data-accent="green"] {
+    --accent: #16a34a; --accent2: #15803d; --accent2-icon: #4ade80; --accent-chip-text: #bbf7d0;
+}
+html[data-accent="amber"] {
+    --accent: #d97706; --accent2: #b45309; --accent2-icon: #fbbf24; --accent-chip-text: #fde68a;
+}
+/* Light mode accent2 override stays readable */
+html[data-theme="light"][data-accent="violet"],
+html[data-theme="light"][data-accent="blue"],
+html[data-theme="light"][data-accent="teal"],
+html[data-theme="light"][data-accent="green"],
+html[data-theme="light"][data-accent="amber"] {
+    --accent2-icon: var(--accent2);
 }
 
 /* ── Light theme ── */
@@ -48,11 +93,11 @@ html[data-theme="light"] {
 /* Chip overrides for light themes */
 html[data-theme="light"] .ext-chip,
 html[data-theme="light"] .ext-chip-editor {
-    background: rgba(83, 52, 131, 0.1);
-    color: #4a2d7a;
+    background: color-mix(in srgb, var(--accent2) 10%, transparent);
+    color: var(--accent2);
 }
 html[data-theme="light"] .ext-chip-remove {
-    color: #4a2d7a;
+    color: var(--accent2);
 }
 html[data-theme="light"] .ignore-chip {
     background: rgba(244, 67, 54, 0.1);
@@ -65,11 +110,11 @@ html[data-theme="light"] .ignore-chip .ext-chip-remove {
 @media (prefers-color-scheme: light) {
     html[data-theme="system"] .ext-chip,
     html[data-theme="system"] .ext-chip-editor {
-        background: rgba(83, 52, 131, 0.1);
-        color: #4a2d7a;
+        background: color-mix(in srgb, var(--accent2) 10%, transparent);
+        color: var(--accent2);
     }
     html[data-theme="system"] .ext-chip-remove {
-        color: #4a2d7a;
+        color: var(--accent2);
     }
     html[data-theme="system"] .ignore-chip {
         background: rgba(244, 67, 54, 0.1);
@@ -215,7 +260,7 @@ header h1 {
 .icon-btn:hover {
     color: var(--text);
     border-color: var(--accent2);
-    background: rgba(83, 52, 131, 0.15);
+    background: color-mix(in srgb, var(--accent2) 15%, transparent);
 }
 .icon-btn.visible {
     display: flex;
@@ -270,7 +315,7 @@ header h1 {
     background: rgba(255, 255, 255, 0.06);
 }
 .fav-item.current {
-    background: rgba(83, 52, 131, 0.2);
+    background: color-mix(in srgb, var(--accent2) 20%, transparent);
 }
 
 .fav-item-info {
@@ -814,8 +859,8 @@ header h1 {
     font-size: 0.72rem;
     padding: 2px 7px;
     border-radius: 3px;
-    background: rgba(83, 52, 131, 0.35);
-    color: #c8b8f0;
+    background: color-mix(in srgb, var(--accent2) 35%, transparent);
+    color: var(--accent-chip-text);
     border: 1px solid var(--accent2);
     font-family: monospace;
 }
@@ -874,7 +919,7 @@ header h1 {
     background: rgba(255, 255, 255, 0.05);
 }
 .tmpl-sidebar-item.active {
-    background: rgba(83, 52, 131, 0.3);
+    background: color-mix(in srgb, var(--accent2) 30%, transparent);
     border-color: var(--accent2);
 }
 
@@ -1206,8 +1251,8 @@ header h1 {
     font-size: 0.75rem;
     padding: 2px 6px;
     border-radius: 3px;
-    background: rgba(83, 52, 131, 0.4);
-    color: #c8b8f0;
+    background: color-mix(in srgb, var(--accent2) 40%, transparent);
+    color: var(--accent-chip-text);
     border: 1px solid var(--accent2);
     font-family: monospace;
     display: flex;
@@ -1219,7 +1264,7 @@ header h1 {
 .ext-chip-remove {
     background: none;
     border: none;
-    color: #c8b8f0;
+    color: var(--accent-chip-text);
     font-size: 0.8rem;
     cursor: pointer;
     padding: 0;
@@ -1514,7 +1559,7 @@ header h1 {
     background: rgba(255, 255, 255, 0.06);
 }
 .config-opt.selected {
-    background: rgba(83, 52, 131, 0.25);
+    background: color-mix(in srgb, var(--accent2) 25%, transparent);
 }
 .config-opt-link-icon {
     display: flex;
@@ -1574,10 +1619,10 @@ header h1 {
 .cfg-link-btn.linked {
     border-color: var(--accent2);
     color: var(--accent2-icon);
-    background: rgba(83, 52, 131, 0.15);
+    background: color-mix(in srgb, var(--accent2) 15%, transparent);
 }
 .cfg-link-btn.linked:hover {
-    background: rgba(83, 52, 131, 0.25);
+    background: color-mix(in srgb, var(--accent2) 25%, transparent);
 }
 .cfg-link-btn:disabled {
     opacity: 0.35;
@@ -1846,7 +1891,7 @@ footer {
     border-color: var(--accent2);
 }
 .theme-btn.active {
-    background: rgba(83, 52, 131, 0.25);
+    background: color-mix(in srgb, var(--accent2) 25%, transparent);
     border-color: var(--accent2);
     color: var(--text);
     font-weight: 600;
@@ -1876,4 +1921,71 @@ footer {
     color: var(--cyan);
     border: 1px solid rgba(0, 188, 212, 0.35);
     flex-shrink: 0;
+}
+
+/* ── Palette selector ── */
+.palette-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.palette-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 11px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text-dim);
+    font-family: var(--font);
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.palette-btn:hover {
+    color: var(--text);
+    border-color: var(--accent2);
+}
+.palette-btn.active {
+    background: color-mix(in srgb, var(--accent2) 22%, transparent);
+    border-color: var(--accent2);
+    color: var(--text);
+    font-weight: 600;
+}
+.palette-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    background: linear-gradient(135deg, var(--p1) 50%, var(--p2) 50%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    flex-shrink: 0;
+}
+
+/* ── Accent color swatches ── */
+.accent-swatches {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.accent-swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--c);
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    flex-shrink: 0;
+    padding: 0;
+}
+.accent-swatch:hover {
+    transform: scale(1.18);
+}
+.accent-swatch.active {
+    border-color: var(--text);
+    box-shadow: 0 0 0 2px var(--c);
+    transform: scale(1.1);
 }

@@ -62,6 +62,8 @@ const TRANSLATIONS = {
     system: "System",
     language: "Language",
     updates: "Updates",
+    colorScheme: "Color Scheme",
+    accentColor: "Accent Color",
     betaChannel: "Beta channel",
     betaChannelSub: "Receive pre-release updates",
     soon: "soon",
@@ -161,6 +163,8 @@ const TRANSLATIONS = {
     system: "Système",
     language: "Langue",
     updates: "Mises à jour",
+    colorScheme: "Schéma de couleurs",
+    accentColor: "Couleur d'accent",
     betaChannel: "Canal bêta",
     betaChannelSub: "Recevoir les mises à jour bêta",
     soon: "bientôt",
@@ -1369,8 +1373,30 @@ function applyTheme(theme) {
     );
 }
 
-// Apply saved theme and language on startup
+function applyPalette(palette) {
+  document.documentElement.dataset.palette = palette;
+  localStorage.setItem("drustPalette", palette);
+  document
+    .querySelectorAll(".palette-btn")
+    .forEach((btn) =>
+      btn.classList.toggle("active", btn.dataset.palette === palette),
+    );
+}
+
+function applyAccent(accent) {
+  document.documentElement.dataset.accent = accent;
+  localStorage.setItem("drustAccent", accent);
+  document
+    .querySelectorAll(".accent-swatch")
+    .forEach((btn) =>
+      btn.classList.toggle("active", btn.dataset.accent === accent),
+    );
+}
+
+// Apply saved theme, palette, accent and language on startup
 applyTheme(localStorage.getItem("drustTheme") || "dark");
+applyPalette(localStorage.getItem("drustPalette") || "midnight");
+applyAccent(localStorage.getItem("drustAccent") || "rose");
 applyLang(localStorage.getItem("drustLang") || "en");
 
 document
@@ -1386,6 +1412,16 @@ document
   .querySelectorAll(".theme-btn:not(.lang-btn)")
   .forEach((btn) =>
     btn.addEventListener("click", () => applyTheme(btn.dataset.theme)),
+  );
+document
+  .querySelectorAll(".palette-btn")
+  .forEach((btn) =>
+    btn.addEventListener("click", () => applyPalette(btn.dataset.palette)),
+  );
+document
+  .querySelectorAll(".accent-swatch")
+  .forEach((btn) =>
+    btn.addEventListener("click", () => applyAccent(btn.dataset.accent)),
   );
 document
   .querySelectorAll(".lang-btn")
