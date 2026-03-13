@@ -16,7 +16,7 @@ A rule-driven file organiser written in Rust, available as both a **CLI tool** a
 - **Unmatched catch-all** — funnel files that matched no rule into a dedicated folder
 - **Nested destinations** — paths like `Documents/PDFs` are created automatically
 - **Cross-device safe** — falls back to copy + delete when a simple rename would fail
-- **Desktop GUI** — native app with a visual rule editor and template management
+- **Desktop GUI** — native app with a visual rule editor, template management, and folder favourites
 
 ---
 
@@ -42,11 +42,12 @@ cargo build -p cleaner-gui --release
 
 ### Cleaner tab
 
-- Pick a target folder — the app detects whether a `cleaner.toml` is already present
-- **Generate Default Config** — writes a sensible starter config if none exists
+- **Folder picker** — choose a target directory; a bookmark button opens your saved favourites for one-click reselection, and a star button adds/removes the current folder from favourites
+- **Template selector** — dropdown listing all saved templates; the folder's linked (default) template is pre-selected and marked with a chain icon; a link icon button to the right lets you set or remove the default association for that folder
 - **Dry Run** — shows every planned move in the output log without touching any file
-- **Run Now** — executes the moves and displays a summary (files moved / errors)
-- **Templates card** — save the current folder's config as a named template, or apply / view / delete existing ones
+- **Run Now** — executes the moves and displays a summary (files moved / errors / unmatched)
+
+> **macOS note:** if you downloaded the app rather than building it yourself, macOS may block it with a "damaged" message. Run `xattr -cr "/Applications/Drust Cleaner.app"` once in the Terminal to clear the quarantine flag.
 
 ### Templates tab
 
@@ -259,7 +260,9 @@ cli-folder-cleaner/
 │       ├── commands.rs        # Tauri commands (run, config, templates)
 │       └── lib.rs
 ├── dist/
-│   └── index.html             # GUI front-end (single-file, vanilla JS)
+│   ├── index.html             # GUI front-end (vanilla JS, no build step)
+│   ├── style.css              # GUI styles
+│   └── app.js                 # GUI logic
 ├── cleaner.toml.example
 ├── Cargo.toml                 # workspace
 └── README.md
