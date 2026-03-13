@@ -14,6 +14,7 @@ pub struct CleanResult {
     pub messages: Vec<String>,
     pub moved: usize,
     pub errors: usize,
+    pub unmatched: usize,
 }
 
 /// Info about an available update returned to the frontend.
@@ -21,6 +22,12 @@ pub struct CleanResult {
 pub struct UpdateInfo {
     pub version: String,
     pub body: Option<String>,
+}
+
+/// Return the current app version from tauri.conf.json.
+#[tauri::command]
+pub fn get_app_version(app: tauri::AppHandle) -> String {
+    app.package_info().version.to_string()
 }
 
 /// Check whether a newer version is available.
@@ -77,6 +84,22 @@ pub fn open_folder(folder_path: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+pub fn open_url(url: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    let cmd = "open";
+    #[cfg(target_os = "windows")]
+    let cmd = "start";
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    let cmd = "xdg-open";
+
+    std::process::Command::new(cmd)
+        .arg(&url)
+        .spawn()
+        .map_err(|e| format!("Failed to open URL: {e}"))?;
+    Ok(())
+}
+
 /// Return true if `cleaner.toml` exists inside the given folder.
 #[tauri::command]
 pub fn check_config(folder_path: String) -> bool {
@@ -106,6 +129,7 @@ pub fn run_cleaner(folder_path: String, dry_run: bool) -> Result<CleanResult, St
         messages: summary.messages,
         moved: summary.moved,
         errors: summary.errors,
+        unmatched: summary.unmatched,
     })
 }
 
@@ -298,6 +322,55 @@ pub fn get_template_rules(
     })
 }
 
+// ── Folder favorites ──────────────────────────────────────────────────────────
+
+fn favorites_file(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map(|d| d.join("favorites.json"))
+        .map_err(|e| e.to_string())
+}
+
+fn load_favorites(app: &tauri::AppHandle) -> Result<Vec<String>, String> {
+    let path = favorites_file(app)?;
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let raw = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    serde_json::from_str(&raw).map_err(|e| e.to_string())
+}
+
+fn save_favorites(app: &tauri::AppHandle, favorites: &[String]) -> Result<(), String> {
+    let path = favorites_file(app)?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let json = serde_json::to_string_pretty(favorites).map_err(|e| e.to_string())?;
+    fs::write(&path, json).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_favorites(app: tauri::AppHandle) -> Result<Vec<String>, String> {
+    load_favorites(&app)
+}
+
+#[tauri::command]
+pub fn add_favorite(app: tauri::AppHandle, folder_path: String) -> Result<(), String> {
+    let mut favs = load_favorites(&app)?;
+    if !favs.contains(&folder_path) {
+        favs.push(folder_path);
+        save_favorites(&app, &favs)?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn remove_favorite(app: tauri::AppHandle, folder_path: String) -> Result<(), String> {
+    let mut favs = load_favorites(&app)?;
+    favs.retain(|f| f != &folder_path);
+    save_favorites(&app, &favs)
+}
+
 // ── Folder-template associations ──────────────────────────────────────────────
 
 fn associations_file(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -375,6 +448,7 @@ pub fn run_with_template(
         messages: summary.messages,
         moved: summary.moved,
         errors: summary.errors,
+        unmatched: summary.unmatched,
     })
 }
 

@@ -10,9 +10,14 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::get_app_version,
             commands::check_update,
             commands::install_update,
             commands::open_folder,
+            commands::open_url,
+            commands::get_favorites,
+            commands::add_favorite,
+            commands::remove_favorite,
             commands::check_config,
             commands::generate_default_config,
             commands::run_cleaner,
