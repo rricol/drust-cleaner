@@ -11,6 +11,10 @@ const TRANSLATIONS = {
     chooseFolder: "Choose Folder",
     changeFolder: "Change folder",
     openInFinder: "Open in Finder",
+    favorites: "Favorites",
+    addToFavorites: "Add to favorites",
+    removeFromFavorites: "Remove from favorites",
+    noFavorites: "No favorites yet.",
     configuration: "Configuration",
     selectTemplate: "Select a template…",
     noTemplates: "No templates — create one in the Templates tab.",
@@ -105,6 +109,10 @@ const TRANSLATIONS = {
     chooseFolder: "Choisir un dossier",
     changeFolder: "Changer de dossier",
     openInFinder: "Ouvrir dans le Finder",
+    favorites: "Favoris",
+    addToFavorites: "Ajouter aux favoris",
+    removeFromFavorites: "Retirer des favoris",
+    noFavorites: "Pas encore de favoris.",
     configuration: "Configuration",
     selectTemplate: "Sélectionner un modèle…",
     noTemplates: "Aucun modèle — créez-en un dans l'onglet Modèles.",
@@ -432,23 +440,132 @@ function makeBtn(label, cls, onClick) {
 const btnPick = document.getElementById("btn-pick");
 const btnChangeFolder = document.getElementById("btn-change-folder");
 const btnOpenFolder = document.getElementById("btn-open-folder");
+const btnFavToggle = document.getElementById("btn-fav-toggle");
+const btnFavList = document.getElementById("btn-fav-list");
+const favDropdown = document.getElementById("fav-dropdown");
+const favListItems = document.getElementById("fav-list-items");
+const favEmpty = document.getElementById("fav-empty");
 
-async function pickFolder() {
-  const path = await open({ directory: true, multiple: false });
-  if (!path) return;
+let favorites = [];
 
+async function selectFolder(path) {
   currentFolder = path;
   folderPathEl.textContent = path;
   folderPathEl.classList.add("has-value");
   btnPick.style.display = "none";
   btnChangeFolder.classList.add("visible");
   btnOpenFolder.classList.add("visible");
+  btnFavToggle.classList.add("visible");
   clearLog();
   setConfigStatus("");
   document.getElementById("config-card").style.display = "block";
   await loadFolderAssociation();
   await loadTemplateDropdown();
+  updateFavToggle();
 }
+
+async function pickFolder() {
+  const path = await open({ directory: true, multiple: false });
+  if (!path) return;
+  await selectFolder(path);
+}
+
+function updateFavToggle() {
+  const isFav = currentFolder && favorites.includes(currentFolder);
+  btnFavToggle.classList.toggle("active", !!isFav);
+  btnFavToggle.title = isFav ? t("removeFromFavorites") : t("addToFavorites");
+}
+
+function renderFavDropdown() {
+  favListItems.innerHTML = "";
+  if (favorites.length === 0) {
+    favEmpty.style.display = "";
+    btnFavList.classList.remove("has-items");
+  } else {
+    favEmpty.style.display = "none";
+    btnFavList.classList.add("has-items");
+    for (const path of favorites) {
+      const name = path.split("/").filter(Boolean).pop() ?? path;
+      const item = document.createElement("div");
+      item.className = "fav-item" + (path === currentFolder ? " current" : "");
+
+      const info = document.createElement("div");
+      info.className = "fav-item-info";
+      const nameEl = document.createElement("span");
+      nameEl.className = "fav-item-name";
+      nameEl.textContent = name;
+      const pathEl = document.createElement("span");
+      pathEl.className = "fav-item-path";
+      pathEl.textContent = path;
+      info.appendChild(nameEl);
+      info.appendChild(pathEl);
+
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "fav-item-remove";
+      removeBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+      removeBtn.title = t("removeFromFavorites");
+      removeBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await invoke("remove_favorite", { folderPath: path });
+        favorites = favorites.filter((f) => f !== path);
+        renderFavDropdown();
+        updateFavToggle();
+      });
+
+      item.appendChild(info);
+      item.appendChild(removeBtn);
+      item.addEventListener("click", () => {
+        closeFavDropdown();
+        selectFolder(path);
+      });
+      favListItems.appendChild(item);
+    }
+  }
+}
+
+async function loadFavorites() {
+  try {
+    favorites = await invoke("get_favorites");
+  } catch {
+    favorites = [];
+  }
+  renderFavDropdown();
+  updateFavToggle();
+}
+
+function closeFavDropdown() {
+  favDropdown.style.display = "none";
+  btnFavList.classList.remove("open");
+}
+
+btnFavList.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const isOpen = favDropdown.style.display !== "none";
+  if (isOpen) {
+    closeFavDropdown();
+  } else {
+    renderFavDropdown();
+    favDropdown.style.display = "";
+    btnFavList.classList.add("open");
+  }
+});
+
+document.addEventListener("click", closeFavDropdown);
+favDropdown.addEventListener("click", (e) => e.stopPropagation());
+
+btnFavToggle.addEventListener("click", async () => {
+  if (!currentFolder) return;
+  const isFav = favorites.includes(currentFolder);
+  if (isFav) {
+    await invoke("remove_favorite", { folderPath: currentFolder });
+    favorites = favorites.filter((f) => f !== currentFolder);
+  } else {
+    await invoke("add_favorite", { folderPath: currentFolder });
+    favorites = [...favorites, currentFolder];
+  }
+  renderFavDropdown();
+  updateFavToggle();
+});
 
 btnPick.addEventListener("click", pickFolder);
 btnChangeFolder.addEventListener("click", pickFolder);
@@ -1214,3 +1331,6 @@ invoke("get_app_version").then((v) => {
 
 // Check for update after a short delay to not block startup
 setTimeout(checkForUpdate, 3000);
+
+// Load favorites on startup
+loadFavorites();

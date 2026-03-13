@@ -41,6 +41,17 @@
                     Target Folder
                 </div>
                 <div id="folder-row">
+                    <div id="fav-wrap">
+                        <button class="icon-btn visible" id="btn-fav-list" data-i18n-title="favorites" title="Favorites">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                            </svg>
+                        </button>
+                        <div id="fav-dropdown" style="display:none">
+                            <div id="fav-list-items"></div>
+                            <div id="fav-empty" class="fav-empty" data-i18n="noFavorites">No favorites yet.</div>
+                        </div>
+                    </div>
                     <div id="folder-path" data-i18n="noFolderSelected">
                         No folder selected…
                     </div>
@@ -95,6 +106,11 @@
                             />
                             <polyline points="15,3 21,3 21,9" />
                             <line x1="10" y1="14" x2="21" y2="3" />
+                        </svg>
+                    </button>
+                    <button class="icon-btn" id="btn-fav-toggle" data-i18n-title="addToFavorites" title="Add to favorites">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                         </svg>
                     </button>
                 </div>

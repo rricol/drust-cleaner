@@ -239,6 +239,108 @@ header h1 {
     color: var(--text);
 }
 
+/* ── Favorites ── */
+#fav-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+#fav-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 280px;
+    background: var(--surface);
+    border: 1px solid var(--accent2);
+    border-radius: 8px;
+    z-index: 30;
+    overflow: hidden;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.fav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+.fav-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+.fav-item.current {
+    background: rgba(83, 52, 131, 0.2);
+}
+
+.fav-item-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+}
+.fav-item-name {
+    font-size: 0.85rem;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.fav-item-path {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: monospace;
+}
+
+.fav-item-remove {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 3px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    opacity: 0;
+    transition:
+        opacity 0.15s,
+        color 0.15s;
+}
+.fav-item:hover .fav-item-remove {
+    opacity: 1;
+}
+.fav-item-remove:hover {
+    color: var(--red);
+}
+
+.fav-empty {
+    padding: 10px 14px;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    font-style: italic;
+}
+
+#btn-fav-list.has-items {
+    color: var(--text);
+}
+
+#btn-fav-toggle.active {
+    color: var(--yellow);
+    border-color: var(--yellow);
+    background: rgba(255, 193, 7, 0.1);
+}
+#btn-fav-toggle.active:hover {
+    background: rgba(255, 193, 7, 0.18);
+}
+#btn-fav-toggle.active svg polygon {
+    fill: currentColor;
+}
+
 /* ── Buttons ── */
 .btn {
     border: none;
@@ -1499,7 +1601,7 @@ header h1 {
 }
 .log-stat-value {
     font-size: 0.9rem;
-    font-weight: 600;
+    font-weight: 400;
     color: var(--text);
 }
 .log-stat-value.green {

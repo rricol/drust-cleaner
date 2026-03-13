@@ -322,6 +322,55 @@ pub fn get_template_rules(
     })
 }
 
+// ── Folder favorites ──────────────────────────────────────────────────────────
+
+fn favorites_file(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map(|d| d.join("favorites.json"))
+        .map_err(|e| e.to_string())
+}
+
+fn load_favorites(app: &tauri::AppHandle) -> Result<Vec<String>, String> {
+    let path = favorites_file(app)?;
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let raw = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    serde_json::from_str(&raw).map_err(|e| e.to_string())
+}
+
+fn save_favorites(app: &tauri::AppHandle, favorites: &[String]) -> Result<(), String> {
+    let path = favorites_file(app)?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let json = serde_json::to_string_pretty(favorites).map_err(|e| e.to_string())?;
+    fs::write(&path, json).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_favorites(app: tauri::AppHandle) -> Result<Vec<String>, String> {
+    load_favorites(&app)
+}
+
+#[tauri::command]
+pub fn add_favorite(app: tauri::AppHandle, folder_path: String) -> Result<(), String> {
+    let mut favs = load_favorites(&app)?;
+    if !favs.contains(&folder_path) {
+        favs.push(folder_path);
+        save_favorites(&app, &favs)?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn remove_favorite(app: tauri::AppHandle, folder_path: String) -> Result<(), String> {
+    let mut favs = load_favorites(&app)?;
+    favs.retain(|f| f != &folder_path);
+    save_favorites(&app, &favs)
+}
+
 // ── Folder-template associations ──────────────────────────────────────────────
 
 fn associations_file(app: &tauri::AppHandle) -> Result<PathBuf, String> {
