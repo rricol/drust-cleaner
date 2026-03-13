@@ -25,6 +25,8 @@ pub struct RunSummary {
     pub moved: usize,
     pub skipped: usize,
     pub errors: usize,
+    /// Files trashed by delete-mode rules.
+    pub deleted: usize,
     /// Files that didn't match any rule and weren't moved to an unmatched destination.
     pub unmatched: usize,
     /// Log messages produced during the run (plain text, no ANSI codes).
@@ -37,6 +39,8 @@ pub struct FileAction {
     pub source: PathBuf,
     pub destination: PathBuf,
     pub rule_name: String,
+    /// When true, the file should be trashed instead of moved.
+    pub delete: bool,
 }
 
 /// Run the engine against `target_dir` using the given `config`.
@@ -55,7 +59,35 @@ pub fn run(
 
     // Process matched files
     for action in &actions {
-        if dry_run {
+        if action.delete {
+            if dry_run {
+                summary.messages.push(format!(
+                    "[DRY-RUN] TRASH {}  (rule: {})",
+                    action.source.display(),
+                    action.rule_name,
+                ));
+                summary.deleted += 1;
+            } else {
+                match trash::delete(&action.source) {
+                    Ok(()) => {
+                        summary.messages.push(format!(
+                            "TRASHED {}  (rule: {})",
+                            action.source.display(),
+                            action.rule_name,
+                        ));
+                        summary.deleted += 1;
+                    }
+                    Err(e) => {
+                        summary.messages.push(format!(
+                            "ERROR {}: {}",
+                            action.source.display(),
+                            e,
+                        ));
+                        summary.errors += 1;
+                    }
+                }
+            }
+        } else if dry_run {
             summary.messages.push(format!(
                 "[DRY-RUN] {} → {}  (rule: {})",
                 action.source.display(),
@@ -98,6 +130,7 @@ pub fn run(
                 source: file.clone(),
                 destination: dest,
                 rule_name: "<unmatched>".to_string(),
+                delete: false,
             };
             match execute_move(&action) {
                 Ok(()) => {
@@ -130,7 +163,72 @@ pub fn run(
         summary.messages.push("No files found.".to_string());
     }
 
+    if config.settings.delete_empty_dirs && !dry_run {
+        cleanup_empty_dirs(target_dir, &config.settings.keep_dirs, config.settings.ignore_hidden, &mut summary);
+    }
+
     Ok(summary)
+}
+
+fn cleanup_empty_dirs(target_dir: &Path, keep_dirs: &[String], ignore_hidden: bool, summary: &mut RunSummary) {
+    // contents_first = post-order: children yielded before their parent, so we
+    // can remove empty leaves and then check if their parent became empty too.
+    let entries: Vec<_> = WalkDir::new(target_dir)
+        .contents_first(true)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_dir())
+        .collect();
+
+    for entry in entries {
+        let path = entry.path();
+        if path == target_dir {
+            continue;
+        }
+        let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        if is_ignored(dir_name, keep_dirs) {
+            continue;
+        }
+
+        // When ignore_hidden is set, hidden files (e.g. macOS .DS_Store) don't
+        // count as real content — remove them first so the dir can be deleted.
+        let has_real_content = match fs::read_dir(path) {
+            Err(_) => continue,
+            Ok(d) => d
+                .filter_map(|e| e.ok())
+                .any(|e| {
+                    !ignore_hidden || !e.file_name().to_string_lossy().starts_with('.')
+                }),
+        };
+
+        if !has_real_content {
+            // Purge any leftover hidden files before calling remove_dir.
+            if ignore_hidden {
+                if let Ok(d) = fs::read_dir(path) {
+                    for e in d.filter_map(|e| e.ok()) {
+                        if e.file_name().to_string_lossy().starts_with('.') {
+                            let _ = fs::remove_file(e.path());
+                        }
+                    }
+                }
+            }
+            match fs::remove_dir(path) {
+                Ok(()) => {
+                    summary
+                        .messages
+                        .push(format!("REMOVED empty dir {}", path.display()));
+                }
+                Err(e) => {
+                    summary.messages.push(format!(
+                        "ERROR removing dir {}: {}",
+                        path.display(),
+                        e
+                    ));
+                    summary.errors += 1;
+                }
+            }
+        }
+    }
 }
 
 fn collect_actions(
@@ -164,6 +262,15 @@ fn collect_actions(
 
         for rule in &config.rules {
             if matches_rule(rule, &file_path, &metadata) {
+                if rule.delete {
+                    actions.push(FileAction {
+                        source: file_path,
+                        destination: PathBuf::new(),
+                        rule_name: rule.name.clone(),
+                        delete: true,
+                    });
+                    continue 'file;
+                }
                 let resolved = resolve_date_placeholders(&rule.destination, &metadata);
                 let destination = build_destination(target_dir, &file_path, &resolved)?;
                 if file_path.parent() == destination.parent() {
@@ -173,6 +280,7 @@ fn collect_actions(
                     source: file_path,
                     destination,
                     rule_name: rule.name.clone(),
+                    delete: false,
                 });
                 continue 'file;
             }

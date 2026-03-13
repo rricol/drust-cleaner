@@ -13,6 +13,7 @@ use cleaner_core::{config, engine};
 pub struct CleanResult {
     pub messages: Vec<String>,
     pub moved: usize,
+    pub deleted: usize,
     pub errors: usize,
     pub unmatched: usize,
 }
@@ -128,6 +129,7 @@ pub fn run_cleaner(folder_path: String, dry_run: bool) -> Result<CleanResult, St
     Ok(CleanResult {
         messages: summary.messages,
         moved: summary.moved,
+        deleted: summary.deleted,
         errors: summary.errors,
         unmatched: summary.unmatched,
     })
@@ -139,6 +141,7 @@ pub fn run_cleaner(folder_path: String, dry_run: bool) -> Result<CleanResult, St
 pub struct TemplateRule {
     pub name: String,
     pub destination: String,
+    pub delete: bool,
     pub extensions: Vec<String>,
     pub name_pattern: Option<String>,
     pub min_size_mb: Option<f64>,
@@ -151,6 +154,8 @@ pub struct TemplateInfo {
     pub recursive: bool,
     pub unmatched_destination: Option<String>,
     pub ignore_hidden: bool,
+    pub delete_empty_dirs: bool,
+    pub keep_dirs: Vec<String>,
     pub rules: Vec<TemplateRule>,
 }
 
@@ -281,12 +286,15 @@ pub fn get_folder_config_info(folder_path: String) -> Result<TemplateInfo, Strin
         recursive: cfg.settings.recursive,
         unmatched_destination: cfg.settings.unmatched_destination,
         ignore_hidden: cfg.settings.ignore_hidden,
+        delete_empty_dirs: cfg.settings.delete_empty_dirs,
+        keep_dirs: cfg.settings.keep_dirs,
         rules: cfg
             .rules
             .into_iter()
             .map(|r| TemplateRule {
                 name: r.name,
                 destination: r.destination,
+                delete: r.delete,
                 extensions: r.extensions,
                 name_pattern: r.name_pattern,
                 min_size_mb: r.min_size_mb,
@@ -309,12 +317,15 @@ pub fn get_template_rules(
         recursive: cfg.settings.recursive,
         unmatched_destination: cfg.settings.unmatched_destination,
         ignore_hidden: cfg.settings.ignore_hidden,
+        delete_empty_dirs: cfg.settings.delete_empty_dirs,
+        keep_dirs: cfg.settings.keep_dirs,
         rules: cfg
             .rules
             .into_iter()
             .map(|r| TemplateRule {
                 name: r.name,
                 destination: r.destination,
+                delete: r.delete,
                 extensions: r.extensions,
                 name_pattern: r.name_pattern,
                 min_size_mb: r.min_size_mb,
@@ -449,6 +460,7 @@ pub fn run_with_template(
     Ok(CleanResult {
         messages: summary.messages,
         moved: summary.moved,
+        deleted: summary.deleted,
         errors: summary.errors,
         unmatched: summary.unmatched,
     })

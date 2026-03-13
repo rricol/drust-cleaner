@@ -32,6 +32,14 @@ pub struct Settings {
     /// When true (default), files whose names start with '.' are skipped.
     #[serde(default = "default_true")]
     pub ignore_hidden: bool,
+
+    /// When true, empty directories inside the target folder are removed after sorting.
+    #[serde(default)]
+    pub delete_empty_dirs: bool,
+
+    /// Folder names (or glob patterns) that must never be deleted, even when empty.
+    #[serde(default)]
+    pub keep_dirs: Vec<String>,
 }
 
 impl Default for Settings {
@@ -41,6 +49,8 @@ impl Default for Settings {
             unmatched_destination: None,
             ignore: Vec::new(),
             ignore_hidden: true,
+            delete_empty_dirs: false,
+            keep_dirs: Vec::new(),
         }
     }
 }
@@ -56,7 +66,13 @@ pub struct Rule {
     pub name: String,
 
     /// Destination folder path, relative to the target directory.
+    /// Not required when `delete = true`.
+    #[serde(default)]
     pub destination: String,
+
+    /// When true, matching files are sent to the system Trash instead of moved.
+    #[serde(default)]
+    pub delete: bool,
 
     /// List of file extensions to match (no leading dot, case-insensitive).
     #[serde(default)]
@@ -107,7 +123,7 @@ fn validate_config(config: &Config) -> anyhow::Result<()> {
         if rule.name.trim().is_empty() {
             anyhow::bail!("Rule #{} has an empty 'name' field.", i + 1);
         }
-        if rule.destination.trim().is_empty() {
+        if !rule.delete && rule.destination.trim().is_empty() {
             anyhow::bail!("Rule '{}' has an empty 'destination' field.", rule.name);
         }
         if !rule.has_conditions() {

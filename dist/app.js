@@ -104,6 +104,22 @@ const TRANSLATIONS = {
     rulesModal: "Rules — {0}",
     ruleCount: "{0} Rule",
     ruleCountPlural: "{0} Rules",
+    scanning: "Scanning",
+    cleanup: "Cleanup",
+    deleteEmptyDirs: "Delete empty folders after sorting",
+    keepDirsLabel: "Exceptions",
+    keepDirsPh: "folder name…",
+    unmatchedDest: "Move to folder",
+    preset: "Preset",
+    presetImages: "Images",
+    presetVideos: "Videos",
+    presetAudio: "Audio",
+    presetDocuments: "Documents",
+    presetArchives: "Archives",
+    presetCode: "Code",
+    moveAction: "Move",
+    trashAction: "Trash",
+    deletedStat: "trashed",
   },
   fr: {
     tabCleaner: "Nettoyeur",
@@ -206,6 +222,22 @@ const TRANSLATIONS = {
     rulesModal: "Règles — {0}",
     ruleCount: "{0} Règle",
     ruleCountPlural: "{0} Règles",
+    scanning: "Analyse",
+    cleanup: "Nettoyage",
+    deleteEmptyDirs: "Supprimer les dossiers vides après le tri",
+    keepDirsLabel: "Exceptions",
+    keepDirsPh: "nom de dossier…",
+    unmatchedDest: "Déplacer vers",
+    preset: "Modèle",
+    presetImages: "Images",
+    presetVideos: "Vidéos",
+    presetAudio: "Audio",
+    presetDocuments: "Documents",
+    presetArchives: "Archives",
+    presetCode: "Code",
+    moveAction: "Déplacer",
+    trashAction: "Corbeille",
+    deletedStat: "corbeillés",
   },
 };
 
@@ -284,6 +316,8 @@ const logOutput = document.getElementById("log-output");
 const logSummary = document.getElementById("log-summary");
 const logRunBadge = document.getElementById("log-run-badge");
 const statMoved = document.getElementById("stat-moved");
+const statDeleted = document.getElementById("stat-deleted");
+const statDeletedWrap = document.getElementById("stat-deleted-wrap");
 const statErrors = document.getElementById("stat-errors");
 const statUnmatched = document.getElementById("stat-unmatched");
 
@@ -316,12 +350,27 @@ function buildLogEntry(msg) {
   const div = document.createElement("div");
 
   const dryMatch = msg.match(/^\[DRY-RUN\] (.+) → (.+)  \(rule: (.+)\)$/);
+  const dryTrashMatch = msg.match(/^\[DRY-RUN\] TRASH (.+)  \(rule: (.+)\)$/);
   const movedMatch = msg.match(/^MOVED (.+) → (.+)  \(rule: (.+)\)$/);
+  const trashedMatch = msg.match(/^TRASHED (.+)  \(rule: (.+)\)$/);
   const movedUnmatch = msg.match(/^MOVED \(unmatched\) (.+) → (.+)$/);
   const errorMatch = msg.match(/^ERROR (.+): (.+)$/);
   const unmatchedMatch = msg.match(/^UNMATCHED (.+)$/);
 
-  if (dryMatch || movedMatch) {
+  if (dryTrashMatch || trashedMatch) {
+    const [, src, rule] = dryTrashMatch || trashedMatch;
+    const isDry = !!dryTrashMatch;
+    div.className = "log-entry log-entry-trashed";
+    div.innerHTML =
+      `<span class="log-prefix">${isDry ? "~" : "🗑"}</span>` +
+      `<span class="log-body">` +
+        `<span class="log-row1">` +
+          `<span class="log-filename">${escHtml(baseName(src))}</span>` +
+          `<span class="log-rule-tag log-rule-tag-trash">${escHtml(rule)}</span>` +
+        `</span>` +
+        `<span class="log-dest">${isDry ? "→ Trash (dry run)" : "→ Trash"}</span>` +
+      `</span>`;
+  } else if (dryMatch || movedMatch) {
     const [, src, dst, rule] = dryMatch || movedMatch;
     const isDry = !!dryMatch;
     div.className = "log-entry " + (isDry ? "log-entry-dry" : "log-entry-moved");
@@ -662,6 +711,8 @@ async function runWithTemplate(dryRun) {
     });
     for (const msg of result.messages) appendLog(msg);
     statMoved.textContent = result.moved;
+    statDeleted.textContent = result.deleted;
+    statDeletedWrap.style.display = result.deleted > 0 ? "" : "none";
     statErrors.textContent = result.errors;
     statUnmatched.textContent = result.unmatched;
     const hasErr = result.errors > 0;
@@ -758,9 +809,20 @@ async function showTemplateRules(name) {
 // TEMPLATES MANAGEMENT VIEW
 // ────────────────────────────────────────────────────────────────────────────
 
+// ── Extension presets ──────────────────────────────────────────────────────
+const EXT_PRESETS = [
+  { key: "images",    labelKey: "presetImages",    exts: ["jpg","jpeg","png","gif","webp","svg","heic","tiff","bmp","raw"] },
+  { key: "videos",    labelKey: "presetVideos",    exts: ["mp4","mov","avi","mkv","wmv","flv","webm","m4v","3gp"] },
+  { key: "audio",     labelKey: "presetAudio",     exts: ["mp3","wav","flac","aac","ogg","m4a","wma","opus","aiff"] },
+  { key: "documents", labelKey: "presetDocuments", exts: ["pdf","doc","docx","xls","xlsx","ppt","pptx","txt","rtf","odt","ods","pages","numbers","key","epub","md"] },
+  { key: "archives",  labelKey: "presetArchives",  exts: ["zip","rar","7z","tar","gz","bz2","xz","dmg","iso","pkg"] },
+  { key: "code",      labelKey: "presetCode",      exts: ["js","ts","jsx","tsx","py","rs","go","java","cpp","c","h","cs","php","rb","swift","kt","css","html","json","yaml","yml","toml","xml","sh"] },
+];
+
 // ── State ──────────────────────────────────────────────────────────────────
 let tmplOriginalName = null; // null = new unsaved template
 let tmplRules = []; // [{name, destination, extensions, namePattern, minSizeMb, maxSizeMb}]
+let tmplKeepDirs = [];
 let tmplDirty = false;
 
 const tmplSidebarList = document.getElementById("tmpl-sidebar-list");
@@ -771,7 +833,10 @@ const tmplDirtyDot = document.getElementById("tmpl-dirty-dot");
 const tmplRecursive = document.getElementById("tmpl-recursive");
 const tmplIgnoreHidden = document.getElementById("tmpl-ignore-hidden");
 const tmplUnmatched = document.getElementById("tmpl-unmatched");
+const tmplDeleteEmptyDirs = document.getElementById("tmpl-delete-empty-dirs");
+const keepDirsWrap = document.getElementById("keep-dirs-wrap");
 const tmplRulesList = document.getElementById("tmpl-rules-list");
+const tmplRulesCountBadge = document.getElementById("tmpl-rules-count");
 const tmplStatusEl = document.getElementById("tmpl-status");
 const btnTmplSave = document.getElementById("btn-tmpl-save");
 const btnAddRule = document.getElementById("btn-add-rule");
@@ -798,6 +863,81 @@ function setTmplStatus(msg, type) {
   tmplStatusEl.textContent = msg;
   tmplStatusEl.className = ""; // reset
   if (type) tmplStatusEl.classList.add(type);
+}
+
+// ── Global close for preset dropdowns ─────────────────────────────────────
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".rule-preset-wrap")) {
+    document
+      .querySelectorAll(".rule-preset-dropdown.open")
+      .forEach((d) => d.classList.remove("open"));
+  }
+});
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+document.querySelectorAll(".tmpl-tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    document
+      .querySelectorAll(".tmpl-tab")
+      .forEach((t) => t.classList.remove("active"));
+    document
+      .querySelectorAll(".tmpl-tab-content")
+      .forEach((c) => c.classList.remove("active"));
+    tab.classList.add("active");
+    document
+      .getElementById(`tmpl-tab-${tab.dataset.tab}`)
+      ?.classList.add("active");
+  });
+});
+
+// ── keep_dirs chip rendering ───────────────────────────────────────────────
+function renderKeepDirs() {
+  keepDirsWrap.innerHTML = "";
+  for (const dir of tmplKeepDirs) {
+    keepDirsWrap.appendChild(makeKeepDirChip(dir));
+  }
+  const inp = document.createElement("input");
+  inp.type = "text";
+  inp.className = "ext-text-input";
+  inp.placeholder = tmplKeepDirs.length ? "" : t("keepDirsPh");
+  inp.addEventListener("keydown", (e) => {
+    if ((e.key === "Enter" || e.key === ",") && inp.value.trim()) {
+      e.preventDefault();
+      addKeepDir(inp.value, inp);
+    } else if (e.key === "Backspace" && !inp.value && tmplKeepDirs.length) {
+      tmplKeepDirs.pop();
+      renderKeepDirs();
+      keepDirsWrap.querySelector(".ext-text-input")?.focus();
+      setTmplDirty(true);
+    }
+  });
+  inp.addEventListener("blur", () => {
+    if (inp.value.trim()) addKeepDir(inp.value, inp);
+  });
+  keepDirsWrap.appendChild(inp);
+  keepDirsWrap.addEventListener("click", () => inp.focus());
+}
+
+function addKeepDir(raw, inp) {
+  const dir = raw.trim();
+  if (dir && !tmplKeepDirs.includes(dir)) {
+    tmplKeepDirs.push(dir);
+    keepDirsWrap.insertBefore(makeKeepDirChip(dir), inp);
+    setTmplDirty(true);
+  }
+  inp.value = "";
+}
+
+function makeKeepDirChip(dir) {
+  const chip = document.createElement("span");
+  chip.className = "ext-chip-editor ignore-chip";
+  chip.innerHTML = `${escHtml(dir)}<button class="ext-chip-remove" title="Remove">×</button>`;
+  chip.querySelector(".ext-chip-remove").addEventListener("click", () => {
+    tmplKeepDirs = tmplKeepDirs.filter((d) => d !== dir);
+    renderKeepDirs();
+    setTmplDirty(true);
+  });
+  return chip;
 }
 
 // ── Sidebar ────────────────────────────────────────────────────────────────
@@ -873,9 +1013,13 @@ async function selectTemplate(name) {
   tmplRecursive.checked = info.recursive;
   tmplIgnoreHidden.checked = info.ignore_hidden;
   tmplUnmatched.value = info.unmatched_destination ?? "";
+  tmplDeleteEmptyDirs.checked = info.delete_empty_dirs ?? false;
+  tmplKeepDirs = [...(info.keep_dirs ?? [])];
+  renderKeepDirs();
   tmplRules = info.rules.map((r) => ({
     name: r.name,
     destination: r.destination,
+    delete: r.delete ?? false,
     extensions: [...r.extensions],
     namePattern: r.name_pattern ?? "",
     minSizeMb: r.min_size_mb != null ? String(r.min_size_mb) : "",
@@ -895,7 +1039,11 @@ btnNewTemplate.addEventListener("click", () => {
   tmplOriginalName = null;
   tmplNameInput.value = "";
   tmplRecursive.checked = false;
+  tmplIgnoreHidden.checked = true;
   tmplUnmatched.value = "";
+  tmplDeleteEmptyDirs.checked = false;
+  tmplKeepDirs = [];
+  renderKeepDirs();
   tmplRules = [];
   renderRules();
   setTmplDirty(false);
@@ -909,6 +1057,7 @@ btnNewTemplate.addEventListener("click", () => {
 );
 tmplRecursive.addEventListener("change", () => setTmplDirty(true));
 tmplIgnoreHidden.addEventListener("change", () => setTmplDirty(true));
+tmplDeleteEmptyDirs.addEventListener("change", () => setTmplDirty(true));
 
 // ── Rules rendering ────────────────────────────────────────────────────────
 function renderRules() {
@@ -916,11 +1065,19 @@ function renderRules() {
   tmplRules.forEach((rule, idx) => {
     tmplRulesList.appendChild(buildRuleCard(rule, idx));
   });
+  if (tmplRulesCountBadge) tmplRulesCountBadge.textContent = tmplRules.length;
 }
 
 function buildRuleCard(rule, idx) {
   const card = document.createElement("div");
   card.className = "rule-editor-card";
+
+  const presetOptionsHtml = EXT_PRESETS.map(
+    (p) =>
+      `<div class="rule-preset-option" data-preset-key="${p.key}">${t(p.labelKey)}</div>`,
+  ).join("");
+
+  if (rule.delete) card.classList.add("rule-card--delete");
 
   card.innerHTML = `
       <div class="rule-card-header">
@@ -929,46 +1086,57 @@ function buildRuleCard(rule, idx) {
           <button class="rule-order-btn" data-dir="down" title="${t("moveDown")}" ${idx === tmplRules.length - 1 ? "disabled" : ""}></button>
         </div>
         <input type="text" class="rule-name-inp" placeholder="${t("ruleNamePh")}" value="${escAttr(rule.name)}" />
-        <span class="rule-arrow">→</span>
-        <input type="text" class="rule-dest-inp" placeholder="${t("ruleDstPh")}" value="${escAttr(rule.destination)}" style="flex:1.2" />
+        <div class="rule-action-toggle">
+          <button class="rule-action-btn${!rule.delete ? " active" : ""}" data-action="move">${t("moveAction")}</button>
+          <button class="rule-action-btn trash${rule.delete ? " active" : ""}" data-action="trash">${t("trashAction")}</button>
+        </div>
         <button class="rule-delete-btn" title="${t("removeRule")}">×</button>
       </div>
+      <div class="rule-dest-row" ${rule.delete ? 'style="display:none"' : ""}>
+        <span class="rule-arrow">→</span>
+        <input type="text" class="rule-dest-inp" placeholder="${t("ruleDstPh")}" value="${escAttr(rule.destination)}" />
+        <div class="date-ph-chips">
+          <button class="date-ph-chip" data-ph="{year}">{year}</button>
+          <button class="date-ph-chip" data-ph="{month}">{month}</button>
+          <button class="date-ph-chip" data-ph="{month_num}">{month_num}</button>
+          <button class="date-ph-chip" data-ph="{day}">{day}</button>
+        </div>
+      </div>
       <div class="rule-card-body">
-        <div class="rule-field-row">
-          <span class="rule-field-label">${t("extensions")}</span>
+        <div class="rule-col">
+          <div class="rule-col-header">
+            <span class="rule-field-label">${t("extensions")}</span>
+            <div class="rule-preset-wrap">
+              <button class="rule-preset-btn">${t("preset")} ▾</button>
+              <div class="rule-preset-dropdown">${presetOptionsHtml}</div>
+            </div>
+          </div>
           <div class="ext-input-wrap" data-idx="${idx}"></div>
         </div>
-        <div class="rule-field-row">
-          <span class="rule-field-label">${t("exclude")}</span>
+        <div class="rule-col">
+          <div class="rule-col-header">
+            <span class="rule-field-label">${t("exclude")}</span>
+          </div>
           <div class="ext-input-wrap ignore-input-wrap" data-idx="${idx}"></div>
         </div>
-        <div class="rule-field-row rule-date-row">
-          <span class="rule-field-label">${t("datePlaceholders")}</span>
-          <div class="date-ph-chips">
-            <button class="date-ph-chip" data-ph="{year}">{year}</button>
-            <button class="date-ph-chip" data-ph="{month}">{month}</button>
-            <button class="date-ph-chip" data-ph="{month_num}">{month_num}</button>
-            <button class="date-ph-chip" data-ph="{day}">{day}</button>
+      </div>
+      <details class="rule-optional">
+        <summary>${t("optionalFilters")}</summary>
+        <div class="rule-optional-body">
+          <div class="rule-opt-row">
+            <span class="rule-opt-label">${t("namePattern")}</span>
+            <input type="text" class="rule-opt-input rule-pattern-inp" placeholder="${t("namePatternPh")}" value="${escAttr(rule.namePattern)}" />
+          </div>
+          <div class="rule-opt-row">
+            <span class="rule-opt-label">${t("minSize")}</span>
+            <input type="number" class="rule-opt-input rule-min-inp" placeholder="—" min="0" step="0.1" value="${escAttr(rule.minSizeMb)}" />
+          </div>
+          <div class="rule-opt-row">
+            <span class="rule-opt-label">${t("maxSize")}</span>
+            <input type="number" class="rule-opt-input rule-max-inp" placeholder="—" min="0" step="0.1" value="${escAttr(rule.maxSizeMb)}" />
           </div>
         </div>
-        <details class="rule-optional">
-          <summary>${t("optionalFilters")}</summary>
-          <div class="rule-optional-body">
-            <div class="rule-opt-row">
-              <span class="rule-opt-label">${t("namePattern")}</span>
-              <input type="text" class="rule-opt-input rule-pattern-inp" placeholder="${t("namePatternPh")}" value="${escAttr(rule.namePattern)}" />
-            </div>
-            <div class="rule-opt-row">
-              <span class="rule-opt-label">${t("minSize")}</span>
-              <input type="number" class="rule-opt-input rule-min-inp" placeholder="—" min="0" step="0.1" value="${escAttr(rule.minSizeMb)}" />
-            </div>
-            <div class="rule-opt-row">
-              <span class="rule-opt-label">${t("maxSize")}</span>
-              <input type="number" class="rule-opt-input rule-max-inp" placeholder="—" min="0" step="0.1" value="${escAttr(rule.maxSizeMb)}" />
-            </div>
-          </div>
-        </details>
-      </div>
+      </details>
     `;
 
   // Extension chip input
@@ -1001,6 +1169,20 @@ function buildRuleCard(rule, idx) {
     setTmplDirty(true);
   });
 
+  // Action toggle (Move / Trash)
+  card.querySelectorAll(".rule-action-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const isTrash = btn.dataset.action === "trash";
+      tmplRules[idx].delete = isTrash;
+      card.querySelectorAll(".rule-action-btn").forEach((b) => {
+        b.classList.toggle("active", b.dataset.action === (isTrash ? "trash" : "move"));
+      });
+      card.classList.toggle("rule-card--delete", isTrash);
+      card.querySelector(".rule-dest-row").style.display = isTrash ? "none" : "";
+      setTmplDirty(true);
+    });
+  });
+
   // Date placeholder chips
   const destInp = card.querySelector(".rule-dest-inp");
   card.querySelectorAll(".date-ph-chip").forEach((chip) => {
@@ -1012,6 +1194,29 @@ function buildRuleCard(rule, idx) {
       destInp.focus();
     });
   });
+
+  // Preset dropdown
+  const presetBtn = card.querySelector(".rule-preset-btn");
+  const presetDropdown = card.querySelector(".rule-preset-dropdown");
+  presetBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    presetDropdown.classList.toggle("open");
+  });
+  presetDropdown.querySelectorAll(".rule-preset-option").forEach((opt) => {
+    opt.addEventListener("click", () => {
+      const preset = EXT_PRESETS.find((p) => p.key === opt.dataset.presetKey);
+      if (!preset) return;
+      // Merge extensions (avoid duplicates)
+      for (const ext of preset.exts) {
+        if (!tmplRules[idx].extensions.includes(ext))
+          tmplRules[idx].extensions.push(ext);
+      }
+      presetDropdown.classList.remove("open");
+      renderRules();
+      setTmplDirty(true);
+    });
+  });
+  // Dropdown closes via global handler below (see closeAllPresets)
 
   // Delete rule
   card.querySelector(".rule-delete-btn").addEventListener("click", () => {
@@ -1169,6 +1374,7 @@ btnAddRule.addEventListener("click", () => {
   tmplRules.push({
     name: "",
     destination: "",
+    delete: false,
     extensions: [],
     namePattern: "",
     minSizeMb: "",
@@ -1202,17 +1408,26 @@ function q(s) {
   return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
-function buildTomlFromData(recursive, ignoreHidden, unmatched, rules) {
+function buildTomlFromData(recursive, ignoreHidden, unmatched, deleteEmptyDirs, keepDirs, rules) {
   let out = "[settings]\n";
   out += `recursive = ${recursive}\n`;
   out += `ignore_hidden = ${ignoreHidden}\n`;
   if (unmatched.trim())
     out += `unmatched_destination = "${q(unmatched.trim())}"\n`;
+  if (deleteEmptyDirs) {
+    out += `delete_empty_dirs = true\n`;
+    if (keepDirs.length)
+      out += `keep_dirs = [${keepDirs.map((d) => `"${q(d)}"`).join(", ")}]\n`;
+  }
   out += "\n";
   for (const r of rules) {
     out += "[[rules]]\n";
     out += `name = "${q(r.name)}"\n`;
-    out += `destination = "${q(r.destination)}"\n`;
+    if (r.delete) {
+      out += `delete = true\n`;
+    } else {
+      out += `destination = "${q(r.destination)}"\n`;
+    }
     if (r.extensions.length)
       out += `extensions = [${r.extensions.map((e) => `"${q(e)}"`).join(", ")}]\n`;
     if (r.namePattern?.trim())
@@ -1231,6 +1446,8 @@ function buildToml() {
     tmplRecursive.checked,
     tmplIgnoreHidden.checked,
     tmplUnmatched.value,
+    tmplDeleteEmptyDirs.checked,
+    tmplKeepDirs,
     tmplRules,
   );
 }
@@ -1254,6 +1471,7 @@ async function duplicateTmpl(name) {
   const rules = info.rules.map((r) => ({
     name: r.name,
     destination: r.destination,
+    delete: r.delete ?? false,
     extensions: [...r.extensions],
     namePattern: r.name_pattern ?? "",
     minSizeMb: r.min_size_mb != null ? String(r.min_size_mb) : "",
@@ -1265,6 +1483,8 @@ async function duplicateTmpl(name) {
     info.recursive,
     info.ignore_hidden,
     info.unmatched_destination ?? "",
+    info.delete_empty_dirs ?? false,
+    info.keep_dirs ?? [],
     rules,
   );
   try {
@@ -1295,7 +1515,7 @@ btnTmplSave.addEventListener("click", async () => {
       setTmplStatus(t("ruleNameRequired", i + 1), "err");
       return;
     }
-    if (!r.destination.trim()) {
+    if (!r.delete && !r.destination.trim()) {
       setTmplStatus(t("ruleDstRequired", r.name), "err");
       return;
     }

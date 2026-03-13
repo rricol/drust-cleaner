@@ -26,38 +26,68 @@
 
 /* ── Color palettes (dark mode) ── */
 html[data-palette="midnight"] {
-    --bg: #1a1a2e; --surface: #16213e; --border: #0f3460; --text-dim: #8892a4;
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --border: #0f3460;
+    --text-dim: #8892a4;
 }
 html[data-palette="slate"] {
-    --bg: #0f172a; --surface: #1e293b; --border: #334155; --text-dim: #94a3b8;
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --border: #334155;
+    --text-dim: #94a3b8;
 }
 html[data-palette="zinc"] {
-    --bg: #18181b; --surface: #27272a; --border: #3f3f46; --text-dim: #a1a1aa;
+    --bg: #18181b;
+    --surface: #27272a;
+    --border: #3f3f46;
+    --text-dim: #a1a1aa;
 }
 html[data-palette="forest"] {
-    --bg: #0a1a0f; --surface: #0f2517; --border: #1e4a2a; --text-dim: #86a899;
+    --bg: #0a1a0f;
+    --surface: #0f2517;
+    --border: #1e4a2a;
+    --text-dim: #86a899;
 }
 html[data-palette="wine"] {
-    --bg: #1f1013; --surface: #2a1821; --border: #4a2535; --text-dim: #a89298;
+    --bg: #1f1013;
+    --surface: #2a1821;
+    --border: #4a2535;
+    --text-dim: #a89298;
 }
 /* Light theme always overrides palette backgrounds */
 
 /* ── Accent colors ── */
 /* rose = :root default */
 html[data-accent="violet"] {
-    --accent: #7c3aed; --accent2: #5b21b6; --accent2-icon: #a78bfa; --accent-chip-text: #ddd6fe;
+    --accent: #7c3aed;
+    --accent2: #5b21b6;
+    --accent2-icon: #a78bfa;
+    --accent-chip-text: #ddd6fe;
 }
 html[data-accent="blue"] {
-    --accent: #2563eb; --accent2: #1d4ed8; --accent2-icon: #60a5fa; --accent-chip-text: #bfdbfe;
+    --accent: #2563eb;
+    --accent2: #1d4ed8;
+    --accent2-icon: #60a5fa;
+    --accent-chip-text: #bfdbfe;
 }
 html[data-accent="teal"] {
-    --accent: #0891b2; --accent2: #0e7490; --accent2-icon: #22d3ee; --accent-chip-text: #a5f3fc;
+    --accent: #0891b2;
+    --accent2: #0e7490;
+    --accent2-icon: #22d3ee;
+    --accent-chip-text: #a5f3fc;
 }
 html[data-accent="green"] {
-    --accent: #16a34a; --accent2: #15803d; --accent2-icon: #4ade80; --accent-chip-text: #bbf7d0;
+    --accent: #16a34a;
+    --accent2: #15803d;
+    --accent2-icon: #4ade80;
+    --accent-chip-text: #bbf7d0;
 }
 html[data-accent="amber"] {
-    --accent: #d97706; --accent2: #b45309; --accent2-icon: #fbbf24; --accent-chip-text: #fde68a;
+    --accent: #d97706;
+    --accent2: #b45309;
+    --accent2-icon: #fbbf24;
+    --accent-chip-text: #fde68a;
 }
 /* Light mode accent2 override stays readable */
 html[data-theme="light"][data-accent="violet"],
@@ -524,7 +554,7 @@ header h1 {
     grid-template-columns: 18px 1fr;
     gap: 0 8px;
     padding: 4px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
 .log-entry:last-child {
     border-bottom: none;
@@ -581,8 +611,12 @@ header h1 {
 }
 
 /* Per-type colours */
-.log-entry-moved .log-prefix  { color: var(--green); }
-.log-entry-moved .log-filename { color: var(--text); }
+.log-entry-moved .log-prefix {
+    color: var(--green);
+}
+.log-entry-moved .log-filename {
+    color: var(--text);
+}
 .log-entry-moved .log-rule-tag {
     background: rgba(76, 175, 80, 0.15);
     color: var(--green);
@@ -592,22 +626,63 @@ header h1 {
     color: var(--text-dim);
 }
 
-.log-entry-dry .log-prefix  { color: var(--cyan); }
-.log-entry-dry .log-filename { color: var(--text); }
+.log-entry-dry .log-prefix {
+    color: var(--cyan);
+}
+.log-entry-dry .log-filename {
+    color: var(--text);
+}
 .log-entry-dry .log-rule-tag {
     background: rgba(0, 188, 212, 0.12);
     color: var(--cyan);
 }
 
-.log-entry-unmatched .log-prefix  { color: var(--text-dim); opacity: 0.5; }
-.log-entry-unmatched .log-filename { color: var(--text-dim); opacity: 0.7; }
+.log-entry-unmatched .log-prefix {
+    color: var(--text-dim);
+    opacity: 0.5;
+}
+.log-entry-unmatched .log-filename {
+    color: var(--text-dim);
+    opacity: 0.7;
+}
 
-.log-entry-error .log-prefix  { color: var(--red); }
-.log-entry-error .log-filename { color: var(--red); }
-.log-error-msg { color: var(--red); opacity: 0.75; }
+.log-entry-error .log-prefix {
+    color: var(--red);
+}
+.log-entry-error .log-filename {
+    color: var(--red);
+}
+.log-error-msg {
+    color: var(--red);
+    opacity: 0.75;
+}
 
-.log-entry-default .log-prefix  { color: var(--text-dim); }
-.log-entry-default .log-filename { color: var(--text-dim); }
+.log-entry-default .log-prefix {
+    color: var(--text-dim);
+}
+.log-entry-default .log-filename {
+    color: var(--text-dim);
+}
+
+.log-entry-trashed .log-prefix {
+    color: var(--red);
+}
+.log-entry-trashed .log-filename {
+    color: var(--red);
+    opacity: 0.85;
+}
+.log-entry-trashed .log-dest {
+    color: var(--red);
+    opacity: 0.6;
+}
+.log-rule-tag-trash {
+    background: rgba(244, 67, 54, 0.12);
+    color: var(--red);
+}
+
+.stat-trashed {
+    color: var(--red);
+}
 
 /* ── Summary bar ── */
 #summary {
@@ -1005,7 +1080,7 @@ header h1 {
 #tmpl-form {
     display: none;
     flex-direction: column;
-    gap: 18px;
+    gap: 12px;
 }
 #tmpl-form.visible {
     display: flex;
@@ -1052,11 +1127,88 @@ header h1 {
     display: block;
 }
 
-/* Settings section */
-#tmpl-settings-card .card-title {
-    margin-bottom: 10px;
+/* Template tabs */
+#tmpl-tabs {
+    display: flex;
+    gap: 2px;
+    border-bottom: 1px solid var(--border);
+    padding: 0;
+    flex-shrink: 0;
 }
 
+.tmpl-tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.12s;
+    margin-bottom: -1px;
+}
+
+.tmpl-tab:hover {
+    color: var(--text);
+}
+
+.tmpl-tab.active {
+    color: var(--text);
+    border-bottom-color: var(--accent2);
+}
+
+.tmpl-rules-badge {
+    font-size: 0.7rem;
+    background: color-mix(in srgb, var(--accent2) 20%, transparent);
+    color: var(--accent2);
+    border-radius: 10px;
+    padding: 1px 6px;
+    font-weight: 600;
+}
+
+.tmpl-tab-content {
+    display: none;
+    flex-direction: column;
+    gap: 14px;
+    padding-top: 4px;
+}
+
+.tmpl-tab-content.active {
+    display: flex;
+}
+
+/* Settings tab groups */
+.tmpl-settings-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.tmpl-settings-group-title {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    font-weight: 600;
+}
+
+.keep-dirs-field {
+    align-items: flex-start;
+}
+
+.keep-dirs-field .ext-input-wrap {
+    flex: 1;
+    align-items: center;
+}
+
+/* Settings section */
 .settings-row {
     display: flex;
     align-items: center;
@@ -1086,7 +1238,7 @@ header h1 {
     color: var(--text-dim);
 }
 
-.settings-field input[type="text"] {
+.settings-field input[type="text"]:not(.ext-text-input) {
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -1097,16 +1249,20 @@ header h1 {
     width: 160px;
 }
 
-.settings-field input[type="text"]:focus {
+.settings-field input[type="text"]:not(.ext-text-input):focus {
     outline: none;
     border-color: var(--accent2);
 }
 
-/* Rules section */
+/* Rules tab */
+#tmpl-tab-rules {
+    gap: 8px;
+}
+
 #tmpl-rules-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
 }
 
 #tmpl-rules-list {
@@ -1120,7 +1276,7 @@ header h1 {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 8px;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .rule-card-header {
@@ -1130,6 +1286,7 @@ header h1 {
     padding: 10px 12px 10px 8px;
     background: rgba(255, 255, 255, 0.03);
     border-bottom: 1px solid var(--border);
+    border-radius: 7px 7px 0 0;
 }
 
 .rule-order-btns {
@@ -1206,17 +1363,58 @@ header h1 {
     flex-shrink: 0;
 }
 
-.rule-card-body {
-    padding: 12px 14px;
+/* Destination row (below header) */
+.rule-dest-row {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px 8px 8px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.015);
+}
+
+.rule-dest-row .rule-dest-inp {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 5px 10px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.85rem;
+}
+
+.rule-dest-row .rule-dest-inp:focus {
+    outline: none;
+    border-color: var(--accent2);
+}
+
+.rule-dest-row .rule-dest-inp::placeholder {
+    color: var(--text-dim);
+}
+
+.rule-dest-row .date-ph-chips {
+    flex-shrink: 0;
+}
+
+.rule-card-body {
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 10px;
 }
 
-.rule-field-row {
+.rule-col {
     display: flex;
-    align-items: flex-start;
-    gap: 10px;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.rule-col-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 20px;
 }
 
 .rule-field-label {
@@ -1224,8 +1422,58 @@ header h1 {
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--text-dim);
-    min-width: 78px;
-    padding-top: 6px;
+}
+
+/* Preset dropdown */
+.rule-preset-wrap {
+    position: relative;
+}
+
+.rule-preset-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-dim);
+    font-size: 0.7rem;
+    padding: 2px 7px;
+    cursor: pointer;
+    transition: all 0.12s;
+    white-space: nowrap;
+}
+
+.rule-preset-btn:hover {
+    border-color: var(--accent2);
+    color: var(--text);
+}
+
+.rule-preset-dropdown {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    z-index: 50;
+    min-width: 130px;
+    padding: 4px 0;
+}
+
+.rule-preset-dropdown.open {
+    display: block;
+}
+
+.rule-preset-option {
+    padding: 7px 14px;
+    font-size: 0.82rem;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.rule-preset-option:hover {
+    background: color-mix(in srgb, var(--accent2) 12%, transparent);
 }
 
 /* Extension chip input */
@@ -1234,13 +1482,21 @@ header h1 {
     display: flex;
     flex-wrap: wrap;
     gap: 5px;
-    align-items: center;
+    align-items: flex-start;
+    align-content: flex-start;
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 5px 8px;
     min-height: 34px;
     cursor: text;
+}
+
+/* In a flex-column context (rule-col), prevent flex:1 from stretching vertically */
+.rule-col .ext-input-wrap {
+    flex: none;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .ext-input-wrap:focus-within {
@@ -1293,9 +1549,6 @@ header h1 {
 }
 
 /* Date placeholder chips */
-.rule-date-row {
-    align-items: center;
-}
 .date-ph-chips {
     display: flex;
     gap: 5px;
@@ -1322,7 +1575,8 @@ header h1 {
 /* Optional filters */
 .rule-optional {
     border: none;
-    padding: 0;
+    padding: 0 12px 10px;
+    border-top: 1px solid var(--border);
 }
 
 .rule-optional summary {
@@ -1336,6 +1590,7 @@ header h1 {
     display: flex;
     align-items: center;
     gap: 5px;
+    padding-top: 9px;
 }
 
 .rule-optional summary::before {
@@ -1472,6 +1727,48 @@ header h1 {
 .rule-delete-btn:hover {
     color: var(--red);
     background: rgba(244, 67, 54, 0.12);
+}
+
+/* ── Action toggle (Move / Trash) ── */
+.rule-action-toggle {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.rule-action-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    border-radius: 5px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition:
+        background 0.15s,
+        color 0.15s,
+        border-color 0.15s;
+}
+
+.rule-action-btn.active {
+    background: color-mix(in srgb, var(--accent2) 20%, transparent);
+    border-color: var(--accent2);
+    color: var(--accent2-icon);
+}
+
+.rule-action-btn.active.trash {
+    background: rgba(244, 67, 54, 0.15);
+    border-color: var(--red);
+    color: var(--red);
+}
+
+/* Delete-mode card accent */
+.rule-card--delete {
+    border-color: rgba(244, 67, 54, 0.35);
+}
+
+.rule-card--delete .rule-card-header {
+    background: rgba(244, 67, 54, 0.06);
 }
 
 /* Editor status line */
@@ -1766,7 +2063,7 @@ header h1 {
 footer {
     background: var(--surface);
     border-top: 1px solid var(--border);
-    padding: 0 12px;
+    padding: 0 12px 1px 12px;
     height: 32px;
     display: flex;
     align-items: center;
@@ -2004,7 +2301,9 @@ footer {
     background: var(--c);
     border: 2px solid transparent;
     cursor: pointer;
-    transition: transform 0.15s, box-shadow 0.15s;
+    transition:
+        transform 0.15s,
+        box-shadow 0.15s;
     flex-shrink: 0;
     padding: 0;
 }
