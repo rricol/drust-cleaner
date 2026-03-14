@@ -16,7 +16,10 @@ A rule-driven file organiser written in Rust, available as both a **CLI tool** a
 - **Unmatched catch-all** — funnel files that matched no rule into a dedicated folder
 - **Nested destinations** — paths like `Documents/PDFs` are created automatically
 - **Cross-device safe** — falls back to copy + delete when a simple rename would fail
-- **Desktop GUI** — native app with a visual rule editor, template management, and folder favourites
+- **Smart skip** — files already in their destination folder are silently ignored
+- **Run history** — every run is logged with its full output for later review
+- **Undo** — reverse any run; moved files are restored to their original locations and empty folders created during the run are cleaned up
+- **Desktop GUI** — native app with a visual rule editor, template management, folder favourites, and run history
 
 ---
 
@@ -45,7 +48,8 @@ cargo build -p cleaner-gui --release
 - **Folder picker** — choose a target directory; a bookmark button opens your saved favourites for one-click reselection, and a star button adds/removes the current folder from favourites
 - **Template selector** — dropdown listing all saved templates; the folder's linked (default) template is pre-selected and marked with a chain icon; a link icon button to the right lets you set or remove the default association for that folder
 - **Dry Run** — shows every planned move in the output log without touching any file
-- **Run Now** — executes the moves and displays a summary (files moved / errors / unmatched)
+- **Run Now** — executes the moves and displays a summary (files moved / errors / unmatched); each log line shows the source folder and destination folder (`/source/ → /dest/`)
+- **Undo** — appears after a successful run; click to reverse all moves from that run and restore files to their original locations
 
 > **macOS note:** if you downloaded the app rather than building it yourself, macOS may block it with a "damaged" message. Run `xattr -cr "/Applications/Drust Cleaner.app"` once in the Terminal to clear the quarantine flag.
 
@@ -85,6 +89,15 @@ A yellow dot appears next to the Save button whenever there are unsaved changes.
 | Windows | `%APPDATA%\com.folder-cleaner.app\templates\` |
 
 Each template is a standard `cleaner.toml`-compatible TOML file and can be edited by hand.
+
+### History tab
+
+A chronological log of every run (real runs only — dry-runs are not recorded).
+
+Each entry shows the folder path, template used, timestamp, and a summary (files moved / deleted / errors). Click an entry to expand it and view the full per-file output.
+
+- **Undo** — each entry with recorded moves shows an Undo button; clicking it reverses all moves for that run, restores files to their original locations, and cleans up any empty folders that were created during the run. The entry is then marked as *undone*.
+- **Clear history** — removes all entries from the log.
 
 ---
 
