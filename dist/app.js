@@ -34,6 +34,7 @@ const TRANSLATIONS = {
     save: "Save",
     settingsCard: "Settings",
     recursive: "Recursive (scan sub-folders)",
+    ignoreHidden: "Ignore hidden files (.*)",
     unmatchedFiles: "Unmatched files →",
     unmatchedPh: "(none)",
     unmatchedTip:
@@ -47,6 +48,7 @@ const TRANSLATIONS = {
     moveDown: "Move down",
     extensions: "Extensions",
     exclude: "Exclude",
+    datePlaceholders: "Date",
     optionalFilters: "Optional filters",
     namePattern: "Name pattern",
     namePatternPh: "e.g. *.log",
@@ -61,6 +63,8 @@ const TRANSLATIONS = {
     system: "System",
     language: "Language",
     updates: "Updates",
+    colorScheme: "Color Scheme",
+    accentColor: "Accent Color",
     betaChannel: "Beta channel",
     betaChannelSub: "Receive pre-release updates",
     soon: "soon",
@@ -100,6 +104,30 @@ const TRANSLATIONS = {
     rulesModal: "Rules — {0}",
     ruleCount: "{0} Rule",
     ruleCountPlural: "{0} Rules",
+    scanning: "Scanning",
+    cleanup: "Cleanup",
+    deleteEmptyDirs: "Delete empty folders after sorting",
+    keepDirsLabel: "Exceptions",
+    keepDirsPh: "folder name…",
+    unmatchedDest: "Move to folder",
+    preset: "Preset",
+    presetImages: "Images",
+    presetVideos: "Videos",
+    presetAudio: "Audio",
+    presetDocuments: "Documents",
+    presetArchives: "Archives",
+    presetCode: "Code",
+    moveAction: "Move",
+    trashAction: "Trash",
+    deletedStat: "trashed",
+    tabHistory: "History",
+    noHistory: "No runs yet.",
+    clearHistory: "Clear history",
+    clearHistoryConfirm: "Clear all run history?",
+    undoRun: "Undo",
+    undoneLabel: "Undone",
+    undoConfirm: "Undo this run? Files will be moved back to their original locations.",
+    undoSuccess: "{0} file(s) restored.",
   },
   fr: {
     tabCleaner: "Nettoyeur",
@@ -132,6 +160,7 @@ const TRANSLATIONS = {
     save: "Sauvegarder",
     settingsCard: "Paramètres",
     recursive: "Récursif (inclure les sous-dossiers)",
+    ignoreHidden: "Ignorer les fichiers cachés (.*)",
     unmatchedFiles: "Fichiers non classés →",
     unmatchedPh: "(aucun)",
     unmatchedTip:
@@ -145,6 +174,7 @@ const TRANSLATIONS = {
     moveDown: "Descendre",
     extensions: "Extensions",
     exclude: "Exclure",
+    datePlaceholders: "Date",
     optionalFilters: "Filtres optionnels",
     namePattern: "Motif de nom",
     namePatternPh: "ex. *.log",
@@ -159,6 +189,8 @@ const TRANSLATIONS = {
     system: "Système",
     language: "Langue",
     updates: "Mises à jour",
+    colorScheme: "Schéma de couleurs",
+    accentColor: "Couleur d'accent",
     betaChannel: "Canal bêta",
     betaChannelSub: "Recevoir les mises à jour bêta",
     soon: "bientôt",
@@ -198,6 +230,30 @@ const TRANSLATIONS = {
     rulesModal: "Règles — {0}",
     ruleCount: "{0} Règle",
     ruleCountPlural: "{0} Règles",
+    scanning: "Analyse",
+    cleanup: "Nettoyage",
+    deleteEmptyDirs: "Supprimer les dossiers vides après le tri",
+    keepDirsLabel: "Exceptions",
+    keepDirsPh: "nom de dossier…",
+    unmatchedDest: "Déplacer vers",
+    preset: "Modèle",
+    presetImages: "Images",
+    presetVideos: "Vidéos",
+    presetAudio: "Audio",
+    presetDocuments: "Documents",
+    presetArchives: "Archives",
+    presetCode: "Code",
+    moveAction: "Déplacer",
+    trashAction: "Corbeille",
+    deletedStat: "corbeillés",
+    tabHistory: "Historique",
+    noHistory: "Aucun run pour l'instant.",
+    clearHistory: "Effacer l'historique",
+    clearHistoryConfirm: "Effacer tout l'historique ?",
+    undoRun: "Annuler",
+    undoneLabel: "Annulé",
+    undoConfirm: "Annuler ce run ? Les fichiers seront remis à leur emplacement d'origine.",
+    undoSuccess: "{0} fichier(s) restauré(s).",
   },
 };
 
@@ -263,7 +319,11 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
     document
       .getElementById("view-templates")
       .classList.toggle("active", view === "templates");
+    document
+      .getElementById("view-history")
+      .classList.toggle("active", view === "history");
     if (view === "templates") loadTmplList();
+    if (view === "history") loadHistory();
   });
 });
 
@@ -276,11 +336,15 @@ const logOutput = document.getElementById("log-output");
 const logSummary = document.getElementById("log-summary");
 const logRunBadge = document.getElementById("log-run-badge");
 const statMoved = document.getElementById("stat-moved");
+const statDeleted = document.getElementById("stat-deleted");
+const statDeletedWrap = document.getElementById("stat-deleted-wrap");
 const statErrors = document.getElementById("stat-errors");
 const statUnmatched = document.getElementById("stat-unmatched");
+const btnUndoRun = document.getElementById("btn-undo-run");
 
 let linkedTemplate = null; // String | null — persisted association
 let selectedTemplate = null; // String | null — dropdown selection (unlinked state)
+let lastRunId = null; // u128 | null — id of last real run, for inline undo
 
 function setConfigStatus(msg, type) {
   const el = document.getElementById("config-status");
@@ -292,23 +356,114 @@ function clearLog() {
   logOutput.textContent = "";
   logCard.classList.remove("visible");
   logSummary.style.display = "none";
+  btnUndoRun.style.display = "none";
+  lastRunId = null;
+}
+
+function baseName(p) {
+  return p.replace(/\\/g, "/").split("/").pop() || p;
+}
+
+function parentDir(p) {
+  const parts = p.replace(/\\/g, "/").split("/");
+  parts.pop();
+  return parts.join("/") + "/";
+}
+
+function buildLogEntry(msg) {
+  const div = document.createElement("div");
+
+  const dryMatch = msg.match(/^\[DRY-RUN\] (.+) → (.+)  \(rule: (.+)\)$/);
+  const dryTrashMatch = msg.match(/^\[DRY-RUN\] TRASH (.+)  \(rule: (.+)\)$/);
+  const movedMatch = msg.match(/^MOVED (.+) → (.+)  \(rule: (.+)\)$/);
+  const trashedMatch = msg.match(/^TRASHED (.+)  \(rule: (.+)\)$/);
+  const movedUnmatch = msg.match(/^MOVED \(unmatched\) (.+) → (.+)$/);
+  const restoredMatch = msg.match(/^RESTORED (.+) → (.+)$/);
+  const errorMatch = msg.match(/^ERROR (.+): (.+)$/);
+  const unmatchedMatch = msg.match(/^UNMATCHED (.+)$/);
+
+  if (dryTrashMatch || trashedMatch) {
+    const [, src, rule] = dryTrashMatch || trashedMatch;
+    const isDry = !!dryTrashMatch;
+    div.className = "log-entry log-entry-trashed";
+    div.innerHTML =
+      `<span class="log-prefix">${isDry ? "~" : "🗑"}</span>` +
+      `<span class="log-body">` +
+        `<span class="log-row1">` +
+          `<span class="log-filename">${escHtml(baseName(src))}</span>` +
+          `<span class="log-rule-tag log-rule-tag-trash">${escHtml(rule)}</span>` +
+        `</span>` +
+        `<span class="log-dest"><span class="log-src">${escHtml(parentDir(src))}</span> → Trash${isDry ? " (dry run)" : ""}</span>` +
+      `</span>`;
+  } else if (dryMatch || movedMatch) {
+    const [, src, dst, rule] = dryMatch || movedMatch;
+    const isDry = !!dryMatch;
+    div.className = "log-entry " + (isDry ? "log-entry-dry" : "log-entry-moved");
+    div.innerHTML =
+      `<span class="log-prefix">${isDry ? "~" : "✓"}</span>` +
+      `<span class="log-body">` +
+        `<span class="log-row1">` +
+          `<span class="log-filename">${escHtml(baseName(src))}</span>` +
+          `<span class="log-rule-tag">${escHtml(rule)}</span>` +
+        `</span>` +
+        `<span class="log-dest"><span class="log-src">${escHtml(parentDir(src))}</span> → ${escHtml(parentDir(dst))}</span>` +
+      `</span>`;
+  } else if (movedUnmatch) {
+    const [, src, dst] = movedUnmatch;
+    div.className = "log-entry log-entry-moved";
+    div.innerHTML =
+      `<span class="log-prefix">✓</span>` +
+      `<span class="log-body">` +
+        `<span class="log-row1">` +
+          `<span class="log-filename">${escHtml(baseName(src))}</span>` +
+          `<span class="log-rule-tag log-rule-tag-other">other</span>` +
+        `</span>` +
+        `<span class="log-dest"><span class="log-src">${escHtml(parentDir(src))}</span> → ${escHtml(parentDir(dst))}</span>` +
+      `</span>`;
+  } else if (restoredMatch) {
+    const [, from, to] = restoredMatch;
+    div.className = "log-entry log-entry-moved";
+    div.innerHTML =
+      `<span class="log-prefix">↩</span>` +
+      `<span class="log-body">` +
+        `<span class="log-row1">` +
+          `<span class="log-filename">${escHtml(baseName(to))}</span>` +
+          `<span class="log-rule-tag log-rule-tag-other">restored</span>` +
+        `</span>` +
+        `<span class="log-dest"><span class="log-src">${escHtml(parentDir(from))}</span> → ${escHtml(parentDir(to))}</span>` +
+      `</span>`;
+  } else if (errorMatch) {
+    const [, src, errMsg] = errorMatch;
+    div.className = "log-entry log-entry-error";
+    div.innerHTML =
+      `<span class="log-prefix">✗</span>` +
+      `<span class="log-body">` +
+        `<span class="log-row1"><span class="log-filename">${escHtml(baseName(src))}</span></span>` +
+        `<span class="log-dest log-error-msg">${escHtml(errMsg)}</span>` +
+      `</span>`;
+  } else if (unmatchedMatch) {
+    const [, src] = unmatchedMatch;
+    div.className = "log-entry log-entry-unmatched";
+    div.innerHTML =
+      `<span class="log-prefix">?</span>` +
+      `<span class="log-body">` +
+        `<span class="log-row1"><span class="log-filename">${escHtml(baseName(src))}</span></span>` +
+      `</span>`;
+  } else {
+    div.className = "log-entry log-entry-default";
+    div.innerHTML =
+      `<span class="log-prefix">·</span>` +
+      `<span class="log-body">` +
+        `<span class="log-row1"><span class="log-filename">${escHtml(msg)}</span></span>` +
+      `</span>`;
+  }
+
+  return div;
 }
 
 function appendLog(msg) {
-  const span = document.createElement("span");
-  span.className = "log-line " + classifyMsg(msg);
-  span.textContent = msg;
-  logOutput.appendChild(span);
-  logOutput.appendChild(document.createTextNode("\n"));
+  logOutput.appendChild(buildLogEntry(msg));
   logOutput.scrollTop = logOutput.scrollHeight;
-}
-
-function classifyMsg(msg) {
-  if (msg.startsWith("[DRY-RUN]")) return "log-dryrun";
-  if (msg.startsWith("MOVED")) return "log-moved";
-  if (msg.startsWith("ERROR")) return "log-error";
-  if (msg.includes("WARN")) return "log-warn";
-  return "log-default";
 }
 
 // ── Config card (folder-template binding) ────────────────────────────────
@@ -417,6 +572,7 @@ btnLinkTmpl.addEventListener("click", async () => {
       });
       linkedTemplate = selectedTemplate;
     }
+    invoke("refresh_tray_menu");
     await loadTemplateDropdown();
     setConfigStatus("");
   } catch (e) {
@@ -459,6 +615,7 @@ async function selectFolder(path) {
   clearLog();
   setConfigStatus("");
   document.getElementById("config-card").style.display = "block";
+  selectedTemplate = null;
   await loadFolderAssociation();
   await loadTemplateDropdown();
   updateFavToggle();
@@ -508,6 +665,7 @@ function renderFavDropdown() {
         e.stopPropagation();
         await invoke("remove_favorite", { folderPath: path });
         favorites = favorites.filter((f) => f !== path);
+        invoke("refresh_tray_menu");
         renderFavDropdown();
         updateFavToggle();
       });
@@ -563,6 +721,7 @@ btnFavToggle.addEventListener("click", async () => {
     await invoke("add_favorite", { folderPath: currentFolder });
     favorites = [...favorites, currentFolder];
   }
+  invoke("refresh_tray_menu");
   renderFavDropdown();
   updateFavToggle();
 });
@@ -585,7 +744,6 @@ async function runWithTemplate(dryRun) {
   [btnDryRun, btnRunNow].forEach((b) => (b.disabled = true));
   clearLog();
   logCard.classList.add("visible");
-  appendLog(dryRun ? t("startingDryRun") : t("startingRun"));
   try {
     const result = await invoke("run_with_template", {
       folderPath: currentFolder,
@@ -594,6 +752,8 @@ async function runWithTemplate(dryRun) {
     });
     for (const msg of result.messages) appendLog(msg);
     statMoved.textContent = result.moved;
+    statDeleted.textContent = result.deleted;
+    statDeletedWrap.style.display = result.deleted > 0 ? "" : "none";
     statErrors.textContent = result.errors;
     statUnmatched.textContent = result.unmatched;
     const hasErr = result.errors > 0;
@@ -601,6 +761,13 @@ async function runWithTemplate(dryRun) {
     logRunBadge.className =
       "run-badge " + (dryRun ? "dry" : hasErr ? "err" : "run");
     logSummary.style.display = "flex";
+    if (!dryRun && result.run_id && result.moved > 0) {
+      lastRunId = result.run_id;
+      btnUndoRun.style.display = "";
+    } else {
+      lastRunId = null;
+      btnUndoRun.style.display = "none";
+    }
     if (hasErr && !dryRun) {
       setConfigStatus(t("doneWithErrors", result.errors), "err");
     } else {
@@ -613,6 +780,28 @@ async function runWithTemplate(dryRun) {
     updateLinkBtn();
   }
 }
+
+// ── Inline undo (cleaner page) ────────────────────────────────────────────
+btnUndoRun.addEventListener("click", async () => {
+  if (!lastRunId || !confirm(t("undoConfirm"))) return;
+  const idToUndo = lastRunId;
+  clearLog();
+  logCard.classList.add("visible");
+  try {
+    const result = await invoke("undo_run", { id: idToUndo });
+    for (const msg of result.messages) appendLog(msg);
+    statMoved.textContent = result.moved;
+    statDeleted.textContent = 0;
+    statDeletedWrap.style.display = "none";
+    statErrors.textContent = result.errors;
+    statUnmatched.textContent = 0;
+    logRunBadge.textContent = t("undoneLabel");
+    logRunBadge.className = "run-badge " + (result.errors > 0 ? "err" : "run");
+    logSummary.style.display = "flex";
+  } catch (e) {
+    appendLog(t("errorLog", e));
+  }
+});
 
 // ── Modal ────────────────────────────────────────────────────────────────
 const modalBackdrop = document.getElementById("modal-backdrop");
@@ -639,6 +828,7 @@ document.addEventListener("keydown", (e) => {
 function renderModalInfo(info) {
   const settingsTags = [
     `<span class="modal-tag ${info.recursive ? "on" : ""}">recursive: ${info.recursive}</span>`,
+    `<span class="modal-tag ${info.ignore_hidden ? "on" : ""}">ignore hidden: ${info.ignore_hidden}</span>`,
     ...(info.unmatched_destination
       ? [
           `<span class="modal-tag on">unmatched → ${escHtml(info.unmatched_destination)}</span>`,
@@ -689,9 +879,20 @@ async function showTemplateRules(name) {
 // TEMPLATES MANAGEMENT VIEW
 // ────────────────────────────────────────────────────────────────────────────
 
+// ── Extension presets ──────────────────────────────────────────────────────
+const EXT_PRESETS = [
+  { key: "images",    labelKey: "presetImages",    exts: ["jpg","jpeg","png","gif","webp","svg","heic","tiff","bmp","raw"] },
+  { key: "videos",    labelKey: "presetVideos",    exts: ["mp4","mov","avi","mkv","wmv","flv","webm","m4v","3gp"] },
+  { key: "audio",     labelKey: "presetAudio",     exts: ["mp3","wav","flac","aac","ogg","m4a","wma","opus","aiff"] },
+  { key: "documents", labelKey: "presetDocuments", exts: ["pdf","doc","docx","xls","xlsx","ppt","pptx","txt","rtf","odt","ods","pages","numbers","key","epub","md"] },
+  { key: "archives",  labelKey: "presetArchives",  exts: ["zip","rar","7z","tar","gz","bz2","xz","dmg","iso","pkg"] },
+  { key: "code",      labelKey: "presetCode",      exts: ["js","ts","jsx","tsx","py","rs","go","java","cpp","c","h","cs","php","rb","swift","kt","css","html","json","yaml","yml","toml","xml","sh"] },
+];
+
 // ── State ──────────────────────────────────────────────────────────────────
 let tmplOriginalName = null; // null = new unsaved template
 let tmplRules = []; // [{name, destination, extensions, namePattern, minSizeMb, maxSizeMb}]
+let tmplKeepDirs = [];
 let tmplDirty = false;
 
 const tmplSidebarList = document.getElementById("tmpl-sidebar-list");
@@ -700,9 +901,14 @@ const tmplForm = document.getElementById("tmpl-form");
 const tmplNameInput = document.getElementById("tmpl-name-input");
 const tmplDirtyDot = document.getElementById("tmpl-dirty-dot");
 const tmplRecursive = document.getElementById("tmpl-recursive");
+const tmplIgnoreHidden = document.getElementById("tmpl-ignore-hidden");
 const tmplUnmatched = document.getElementById("tmpl-unmatched");
+const tmplDeleteEmptyDirs = document.getElementById("tmpl-delete-empty-dirs");
+const keepDirsWrap = document.getElementById("keep-dirs-wrap");
 const tmplRulesList = document.getElementById("tmpl-rules-list");
+const tmplRulesCountBadge = document.getElementById("tmpl-rules-count");
 const tmplStatusEl = document.getElementById("tmpl-status");
+const tmplFooter = document.getElementById("tmpl-footer");
 const btnTmplSave = document.getElementById("btn-tmpl-save");
 const btnAddRule = document.getElementById("btn-add-rule");
 const btnNewTemplate = document.getElementById("btn-new-template");
@@ -728,6 +934,81 @@ function setTmplStatus(msg, type) {
   tmplStatusEl.textContent = msg;
   tmplStatusEl.className = ""; // reset
   if (type) tmplStatusEl.classList.add(type);
+}
+
+// ── Global close for preset dropdowns ─────────────────────────────────────
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".rule-preset-wrap")) {
+    document
+      .querySelectorAll(".rule-preset-dropdown.open")
+      .forEach((d) => d.classList.remove("open"));
+  }
+});
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+document.querySelectorAll(".tmpl-tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    document
+      .querySelectorAll(".tmpl-tab")
+      .forEach((t) => t.classList.remove("active"));
+    document
+      .querySelectorAll(".tmpl-tab-content")
+      .forEach((c) => c.classList.remove("active"));
+    tab.classList.add("active");
+    document
+      .getElementById(`tmpl-tab-${tab.dataset.tab}`)
+      ?.classList.add("active");
+  });
+});
+
+// ── keep_dirs chip rendering ───────────────────────────────────────────────
+function renderKeepDirs() {
+  keepDirsWrap.innerHTML = "";
+  for (const dir of tmplKeepDirs) {
+    keepDirsWrap.appendChild(makeKeepDirChip(dir));
+  }
+  const inp = document.createElement("input");
+  inp.type = "text";
+  inp.className = "ext-text-input";
+  inp.placeholder = tmplKeepDirs.length ? "" : t("keepDirsPh");
+  inp.addEventListener("keydown", (e) => {
+    if ((e.key === "Enter" || e.key === ",") && inp.value.trim()) {
+      e.preventDefault();
+      addKeepDir(inp.value, inp);
+    } else if (e.key === "Backspace" && !inp.value && tmplKeepDirs.length) {
+      tmplKeepDirs.pop();
+      renderKeepDirs();
+      keepDirsWrap.querySelector(".ext-text-input")?.focus();
+      setTmplDirty(true);
+    }
+  });
+  inp.addEventListener("blur", () => {
+    if (inp.value.trim()) addKeepDir(inp.value, inp);
+  });
+  keepDirsWrap.appendChild(inp);
+  keepDirsWrap.addEventListener("click", () => inp.focus());
+}
+
+function addKeepDir(raw, inp) {
+  const dir = raw.trim();
+  if (dir && !tmplKeepDirs.includes(dir)) {
+    tmplKeepDirs.push(dir);
+    keepDirsWrap.insertBefore(makeKeepDirChip(dir), inp);
+    setTmplDirty(true);
+  }
+  inp.value = "";
+}
+
+function makeKeepDirChip(dir) {
+  const chip = document.createElement("span");
+  chip.className = "ext-chip-editor ignore-chip";
+  chip.innerHTML = `${escHtml(dir)}<button class="ext-chip-remove" title="Remove">×</button>`;
+  chip.querySelector(".ext-chip-remove").addEventListener("click", () => {
+    tmplKeepDirs = tmplKeepDirs.filter((d) => d !== dir);
+    renderKeepDirs();
+    setTmplDirty(true);
+  });
+  return chip;
 }
 
 // ── Sidebar ────────────────────────────────────────────────────────────────
@@ -782,10 +1063,21 @@ function highlightSidebarItem(name) {
 }
 
 // ── Select / load template ─────────────────────────────────────────────────
-async function selectTemplate(name) {
-  highlightSidebarItem(name);
+function showTmplForm() {
   tmplPlaceholder.style.display = "none";
   tmplForm.classList.add("visible");
+  tmplFooter.style.display = "flex";
+}
+
+function hideTmplForm() {
+  tmplForm.classList.remove("visible");
+  tmplFooter.style.display = "none";
+  tmplPlaceholder.style.display = "";
+}
+
+async function selectTemplate(name) {
+  highlightSidebarItem(name);
+  showTmplForm();
   setTmplStatus("");
 
   let info;
@@ -801,10 +1093,15 @@ async function selectTemplate(name) {
   tmplOriginalName = name;
   tmplNameInput.value = name;
   tmplRecursive.checked = info.recursive;
+  tmplIgnoreHidden.checked = info.ignore_hidden;
   tmplUnmatched.value = info.unmatched_destination ?? "";
+  tmplDeleteEmptyDirs.checked = info.delete_empty_dirs ?? false;
+  tmplKeepDirs = [...(info.keep_dirs ?? [])];
+  renderKeepDirs();
   tmplRules = info.rules.map((r) => ({
     name: r.name,
     destination: r.destination,
+    delete: r.delete ?? false,
     extensions: [...r.extensions],
     namePattern: r.name_pattern ?? "",
     minSizeMb: r.min_size_mb != null ? String(r.min_size_mb) : "",
@@ -819,12 +1116,15 @@ async function selectTemplate(name) {
 // ── New template ───────────────────────────────────────────────────────────
 btnNewTemplate.addEventListener("click", () => {
   highlightSidebarItem(null);
-  tmplPlaceholder.style.display = "none";
-  tmplForm.classList.add("visible");
+  showTmplForm();
   tmplOriginalName = null;
   tmplNameInput.value = "";
   tmplRecursive.checked = false;
+  tmplIgnoreHidden.checked = true;
   tmplUnmatched.value = "";
+  tmplDeleteEmptyDirs.checked = false;
+  tmplKeepDirs = [];
+  renderKeepDirs();
   tmplRules = [];
   renderRules();
   setTmplDirty(false);
@@ -837,6 +1137,8 @@ btnNewTemplate.addEventListener("click", () => {
   el.addEventListener("input", () => setTmplDirty(true)),
 );
 tmplRecursive.addEventListener("change", () => setTmplDirty(true));
+tmplIgnoreHidden.addEventListener("change", () => setTmplDirty(true));
+tmplDeleteEmptyDirs.addEventListener("change", () => setTmplDirty(true));
 
 // ── Rules rendering ────────────────────────────────────────────────────────
 function renderRules() {
@@ -844,11 +1146,19 @@ function renderRules() {
   tmplRules.forEach((rule, idx) => {
     tmplRulesList.appendChild(buildRuleCard(rule, idx));
   });
+  if (tmplRulesCountBadge) tmplRulesCountBadge.textContent = tmplRules.length;
 }
 
 function buildRuleCard(rule, idx) {
   const card = document.createElement("div");
   card.className = "rule-editor-card";
+
+  const presetOptionsHtml = EXT_PRESETS.map(
+    (p) =>
+      `<div class="rule-preset-option" data-preset-key="${p.key}">${t(p.labelKey)}</div>`,
+  ).join("");
+
+  if (rule.delete) card.classList.add("rule-card--delete");
 
   card.innerHTML = `
       <div class="rule-card-header">
@@ -857,37 +1167,57 @@ function buildRuleCard(rule, idx) {
           <button class="rule-order-btn" data-dir="down" title="${t("moveDown")}" ${idx === tmplRules.length - 1 ? "disabled" : ""}></button>
         </div>
         <input type="text" class="rule-name-inp" placeholder="${t("ruleNamePh")}" value="${escAttr(rule.name)}" />
-        <span class="rule-arrow">→</span>
-        <input type="text" class="rule-dest-inp" placeholder="${t("ruleDstPh")}" value="${escAttr(rule.destination)}" style="flex:1.2" />
+        <div class="rule-action-toggle">
+          <button class="rule-action-btn${!rule.delete ? " active" : ""}" data-action="move">${t("moveAction")}</button>
+          <button class="rule-action-btn trash${rule.delete ? " active" : ""}" data-action="trash">${t("trashAction")}</button>
+        </div>
         <button class="rule-delete-btn" title="${t("removeRule")}">×</button>
       </div>
+      <div class="rule-dest-row" ${rule.delete ? 'style="display:none"' : ""}>
+        <span class="rule-arrow">→</span>
+        <input type="text" class="rule-dest-inp" placeholder="${t("ruleDstPh")}" value="${escAttr(rule.destination)}" />
+        <div class="date-ph-chips">
+          <button class="date-ph-chip" data-ph="{year}">{year}</button>
+          <button class="date-ph-chip" data-ph="{month}">{month}</button>
+          <button class="date-ph-chip" data-ph="{month_num}">{month_num}</button>
+          <button class="date-ph-chip" data-ph="{day}">{day}</button>
+        </div>
+      </div>
       <div class="rule-card-body">
-        <div class="rule-field-row">
-          <span class="rule-field-label">${t("extensions")}</span>
-          <div class="ext-input-wrap" data-idx="${idx}"></div>
-        </div>
-        <div class="rule-field-row">
-          <span class="rule-field-label">${t("exclude")}</span>
-          <div class="ext-input-wrap ignore-input-wrap" data-idx="${idx}"></div>
-        </div>
-        <details class="rule-optional">
-          <summary>${t("optionalFilters")}</summary>
-          <div class="rule-optional-body">
-            <div class="rule-opt-row">
-              <span class="rule-opt-label">${t("namePattern")}</span>
-              <input type="text" class="rule-opt-input rule-pattern-inp" placeholder="${t("namePatternPh")}" value="${escAttr(rule.namePattern)}" />
-            </div>
-            <div class="rule-opt-row">
-              <span class="rule-opt-label">${t("minSize")}</span>
-              <input type="number" class="rule-opt-input rule-min-inp" placeholder="—" min="0" step="0.1" value="${escAttr(rule.minSizeMb)}" />
-            </div>
-            <div class="rule-opt-row">
-              <span class="rule-opt-label">${t("maxSize")}</span>
-              <input type="number" class="rule-opt-input rule-max-inp" placeholder="—" min="0" step="0.1" value="${escAttr(rule.maxSizeMb)}" />
+        <div class="rule-col">
+          <div class="rule-col-header">
+            <span class="rule-field-label">${t("extensions")}</span>
+            <div class="rule-preset-wrap">
+              <button class="rule-preset-btn">${t("preset")} ▾</button>
+              <div class="rule-preset-dropdown">${presetOptionsHtml}</div>
             </div>
           </div>
-        </details>
+          <div class="ext-input-wrap" data-idx="${idx}"></div>
+        </div>
+        <div class="rule-col">
+          <div class="rule-col-header">
+            <span class="rule-field-label">${t("exclude")}</span>
+          </div>
+          <div class="ext-input-wrap ignore-input-wrap" data-idx="${idx}"></div>
+        </div>
       </div>
+      <details class="rule-optional">
+        <summary>${t("optionalFilters")}</summary>
+        <div class="rule-optional-body">
+          <div class="rule-opt-row">
+            <span class="rule-opt-label">${t("namePattern")}</span>
+            <input type="text" class="rule-opt-input rule-pattern-inp" placeholder="${t("namePatternPh")}" value="${escAttr(rule.namePattern)}" />
+          </div>
+          <div class="rule-opt-row">
+            <span class="rule-opt-label">${t("minSize")}</span>
+            <input type="number" class="rule-opt-input rule-min-inp" placeholder="—" min="0" step="0.1" value="${escAttr(rule.minSizeMb)}" />
+          </div>
+          <div class="rule-opt-row">
+            <span class="rule-opt-label">${t("maxSize")}</span>
+            <input type="number" class="rule-opt-input rule-max-inp" placeholder="—" min="0" step="0.1" value="${escAttr(rule.maxSizeMb)}" />
+          </div>
+        </div>
+      </details>
     `;
 
   // Extension chip input
@@ -919,6 +1249,55 @@ function buildRuleCard(rule, idx) {
     tmplRules[idx].maxSizeMb = e.target.value;
     setTmplDirty(true);
   });
+
+  // Action toggle (Move / Trash)
+  card.querySelectorAll(".rule-action-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const isTrash = btn.dataset.action === "trash";
+      tmplRules[idx].delete = isTrash;
+      card.querySelectorAll(".rule-action-btn").forEach((b) => {
+        b.classList.toggle("active", b.dataset.action === (isTrash ? "trash" : "move"));
+      });
+      card.classList.toggle("rule-card--delete", isTrash);
+      card.querySelector(".rule-dest-row").style.display = isTrash ? "none" : "";
+      setTmplDirty(true);
+    });
+  });
+
+  // Date placeholder chips
+  const destInp = card.querySelector(".rule-dest-inp");
+  card.querySelectorAll(".date-ph-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const sep = destInp.value && !destInp.value.endsWith("/") ? "/" : "";
+      destInp.value += sep + chip.dataset.ph;
+      tmplRules[idx].destination = destInp.value;
+      setTmplDirty(true);
+      destInp.focus();
+    });
+  });
+
+  // Preset dropdown
+  const presetBtn = card.querySelector(".rule-preset-btn");
+  const presetDropdown = card.querySelector(".rule-preset-dropdown");
+  presetBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    presetDropdown.classList.toggle("open");
+  });
+  presetDropdown.querySelectorAll(".rule-preset-option").forEach((opt) => {
+    opt.addEventListener("click", () => {
+      const preset = EXT_PRESETS.find((p) => p.key === opt.dataset.presetKey);
+      if (!preset) return;
+      // Merge extensions (avoid duplicates)
+      for (const ext of preset.exts) {
+        if (!tmplRules[idx].extensions.includes(ext))
+          tmplRules[idx].extensions.push(ext);
+      }
+      presetDropdown.classList.remove("open");
+      renderRules();
+      setTmplDirty(true);
+    });
+  });
+  // Dropdown closes via global handler below (see closeAllPresets)
 
   // Delete rule
   card.querySelector(".rule-delete-btn").addEventListener("click", () => {
@@ -966,10 +1345,10 @@ function buildExtChips(wrap, extensions, idx) {
       tmplRules[idx].extensions.length
     ) {
       tmplRules[idx].extensions.pop();
-      renderRules();
-      // Refocus last ext chip's input
-      const newWrap = tmplRulesList.querySelectorAll(".ext-input-wrap")[idx];
-      if (newWrap) newWrap.querySelector(".ext-text-input")?.focus();
+      wrap.querySelectorAll(".ext-chip-editor").forEach((c, i, arr) => {
+        if (i === arr.length - 1) c.remove();
+      });
+      textInput.placeholder = tmplRules[idx].extensions.length ? "" : t("extPh");
       setTmplDirty(true);
     }
   });
@@ -1001,10 +1380,13 @@ function makeChip(ext, idx) {
     tmplRules[idx].extensions = tmplRules[idx].extensions.filter(
       (e) => e !== ext,
     );
-    renderRules();
-    // Re-focus the text input of the same card
-    const newWrap = tmplRulesList.querySelectorAll(".ext-input-wrap")[idx];
-    if (newWrap) newWrap.querySelector(".ext-text-input")?.focus();
+    const wrap = chip.parentElement;
+    chip.remove();
+    const textInput = wrap?.querySelector(".ext-text-input");
+    if (textInput) {
+      textInput.placeholder = tmplRules[idx].extensions.length ? "" : t("extPh");
+      textInput.focus();
+    }
     setTmplDirty(true);
   });
   return chip;
@@ -1031,9 +1413,10 @@ function buildIgnoreChips(wrap, ignoreList, idx) {
       tmplRules[idx].ignore.length
     ) {
       tmplRules[idx].ignore.pop();
-      renderRules();
-      const newWrap = tmplRulesList.querySelectorAll(".ignore-input-wrap")[idx];
-      if (newWrap) newWrap.querySelector(".ext-text-input")?.focus();
+      wrap.querySelectorAll(".ext-chip-editor").forEach((c, i, arr) => {
+        if (i === arr.length - 1) c.remove();
+      });
+      textInput.placeholder = tmplRules[idx].ignore.length ? "" : t("excludePh");
       setTmplDirty(true);
     }
   });
@@ -1063,9 +1446,13 @@ function makeIgnoreChip(pattern, idx) {
   chip.innerHTML = `${escHtml(pattern)}<button class="ext-chip-remove" title="Remove">×</button>`;
   chip.querySelector(".ext-chip-remove").addEventListener("click", () => {
     tmplRules[idx].ignore = tmplRules[idx].ignore.filter((p) => p !== pattern);
-    renderRules();
-    const newWrap = tmplRulesList.querySelectorAll(".ignore-input-wrap")[idx];
-    if (newWrap) newWrap.querySelector(".ext-text-input")?.focus();
+    const wrap = chip.parentElement;
+    chip.remove();
+    const textInput = wrap?.querySelector(".ext-text-input");
+    if (textInput) {
+      textInput.placeholder = tmplRules[idx].ignore.length ? "" : t("excludePh");
+      textInput.focus();
+    }
     setTmplDirty(true);
   });
   return chip;
@@ -1073,9 +1460,19 @@ function makeIgnoreChip(pattern, idx) {
 
 // ── Add rule ───────────────────────────────────────────────────────────────
 btnAddRule.addEventListener("click", () => {
+  // Switch to rules tab if not already active
+  const rulesTab = document.querySelector('.tmpl-tab[data-tab="rules"]');
+  if (rulesTab && !rulesTab.classList.contains("active")) {
+    document.querySelectorAll(".tmpl-tab").forEach((t) => t.classList.remove("active"));
+    document.querySelectorAll(".tmpl-tab-content").forEach((c) => c.classList.remove("active"));
+    rulesTab.classList.add("active");
+    document.getElementById("tmpl-tab-rules")?.classList.add("active");
+  }
+
   tmplRules.push({
     name: "",
     destination: "",
+    delete: false,
     extensions: [],
     namePattern: "",
     minSizeMb: "",
@@ -1084,9 +1481,14 @@ btnAddRule.addEventListener("click", () => {
   });
   renderRules();
   setTmplDirty(true);
-  // Focus new rule's name input
-  const cards = tmplRulesList.querySelectorAll(".rule-name-inp");
-  cards[cards.length - 1]?.focus();
+
+  // Focus and scroll to the new rule's name input
+  const nameInputs = tmplRulesList.querySelectorAll(".rule-name-inp");
+  const lastInput = nameInputs[nameInputs.length - 1];
+  if (lastInput) {
+    lastInput.focus();
+    lastInput.closest(".rule-editor-card")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
 });
 
 // ── Delete template ────────────────────────────────────────────────────────
@@ -1095,8 +1497,7 @@ async function deleteTmpl(name) {
     await invoke("delete_template", { templateName: name });
     if (tmplOriginalName === name) {
       tmplOriginalName = null;
-      tmplForm.classList.remove("visible");
-      tmplPlaceholder.style.display = "";
+      hideTmplForm();
     }
     await loadTmplList();
   } catch (err) {
@@ -1109,16 +1510,26 @@ function q(s) {
   return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
-function buildTomlFromData(recursive, unmatched, rules) {
+function buildTomlFromData(recursive, ignoreHidden, unmatched, deleteEmptyDirs, keepDirs, rules) {
   let out = "[settings]\n";
   out += `recursive = ${recursive}\n`;
+  out += `ignore_hidden = ${ignoreHidden}\n`;
   if (unmatched.trim())
     out += `unmatched_destination = "${q(unmatched.trim())}"\n`;
+  if (deleteEmptyDirs) {
+    out += `delete_empty_dirs = true\n`;
+    if (keepDirs.length)
+      out += `keep_dirs = [${keepDirs.map((d) => `"${q(d)}"`).join(", ")}]\n`;
+  }
   out += "\n";
   for (const r of rules) {
     out += "[[rules]]\n";
     out += `name = "${q(r.name)}"\n`;
-    out += `destination = "${q(r.destination)}"\n`;
+    if (r.delete) {
+      out += `delete = true\n`;
+    } else {
+      out += `destination = "${q(r.destination)}"\n`;
+    }
     if (r.extensions.length)
       out += `extensions = [${r.extensions.map((e) => `"${q(e)}"`).join(", ")}]\n`;
     if (r.namePattern?.trim())
@@ -1135,7 +1546,10 @@ function buildTomlFromData(recursive, unmatched, rules) {
 function buildToml() {
   return buildTomlFromData(
     tmplRecursive.checked,
+    tmplIgnoreHidden.checked,
     tmplUnmatched.value,
+    tmplDeleteEmptyDirs.checked,
+    tmplKeepDirs,
     tmplRules,
   );
 }
@@ -1159,6 +1573,7 @@ async function duplicateTmpl(name) {
   const rules = info.rules.map((r) => ({
     name: r.name,
     destination: r.destination,
+    delete: r.delete ?? false,
     extensions: [...r.extensions],
     namePattern: r.name_pattern ?? "",
     minSizeMb: r.min_size_mb != null ? String(r.min_size_mb) : "",
@@ -1168,7 +1583,10 @@ async function duplicateTmpl(name) {
 
   const toml = buildTomlFromData(
     info.recursive,
+    info.ignore_hidden,
     info.unmatched_destination ?? "",
+    info.delete_empty_dirs ?? false,
+    info.keep_dirs ?? [],
     rules,
   );
   try {
@@ -1199,7 +1617,7 @@ btnTmplSave.addEventListener("click", async () => {
       setTmplStatus(t("ruleNameRequired", i + 1), "err");
       return;
     }
-    if (!r.destination.trim()) {
+    if (!r.delete && !r.destination.trim()) {
       setTmplStatus(t("ruleDstRequired", r.name), "err");
       return;
     }
@@ -1300,8 +1718,30 @@ function applyTheme(theme) {
     );
 }
 
-// Apply saved theme and language on startup
+function applyPalette(palette) {
+  document.documentElement.dataset.palette = palette;
+  localStorage.setItem("drustPalette", palette);
+  document
+    .querySelectorAll(".palette-btn")
+    .forEach((btn) =>
+      btn.classList.toggle("active", btn.dataset.palette === palette),
+    );
+}
+
+function applyAccent(accent) {
+  document.documentElement.dataset.accent = accent;
+  localStorage.setItem("drustAccent", accent);
+  document
+    .querySelectorAll(".accent-swatch")
+    .forEach((btn) =>
+      btn.classList.toggle("active", btn.dataset.accent === accent),
+    );
+}
+
+// Apply saved theme, palette, accent and language on startup
 applyTheme(localStorage.getItem("drustTheme") || "dark");
+applyPalette(localStorage.getItem("drustPalette") || "midnight");
+applyAccent(localStorage.getItem("drustAccent") || "rose");
 applyLang(localStorage.getItem("drustLang") || "en");
 
 document
@@ -1319,6 +1759,16 @@ document
     btn.addEventListener("click", () => applyTheme(btn.dataset.theme)),
   );
 document
+  .querySelectorAll(".palette-btn")
+  .forEach((btn) =>
+    btn.addEventListener("click", () => applyPalette(btn.dataset.palette)),
+  );
+document
+  .querySelectorAll(".accent-swatch")
+  .forEach((btn) =>
+    btn.addEventListener("click", () => applyAccent(btn.dataset.accent)),
+  );
+document
   .querySelectorAll(".lang-btn")
   .forEach((btn) =>
     btn.addEventListener("click", () => applyLang(btn.dataset.lang)),
@@ -1334,3 +1784,97 @@ setTimeout(checkForUpdate, 3000);
 
 // Load favorites on startup
 loadFavorites();
+
+// ────────────────────────────────────────────────────────────────────────────
+// HISTORY VIEW
+// ────────────────────────────────────────────────────────────────────────────
+const historyList = document.getElementById("history-list");
+const historyEmpty = document.getElementById("history-empty");
+const btnClearHistory = document.getElementById("btn-clear-history");
+
+function renderHistory(entries) {
+  historyList.innerHTML = "";
+  if (!entries || entries.length === 0) {
+    historyList.style.display = "none";
+    historyEmpty.style.display = "flex";
+    return;
+  }
+  historyList.style.display = "flex";
+  historyEmpty.style.display = "none";
+
+  entries.forEach((entry) => {
+    const card = document.createElement("div");
+    card.className = "history-card" + (entry.undone ? " undone" : "");
+
+    const date = new Date(Number(entry.id)).toLocaleString();
+    const folder = baseName(entry.folder_path);
+
+    const statsHtml = [
+      entry.moved > 0
+        ? `<span class="history-stat history-stat-moved">${entry.moved} ${t("moved")}</span>`
+        : "",
+      entry.deleted > 0
+        ? `<span class="history-stat history-stat-deleted">${entry.deleted} ${t("deletedStat")}</span>`
+        : "",
+      entry.errors > 0
+        ? `<span class="history-stat history-stat-error">${entry.errors} ${t("errors")}</span>`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("");
+
+    card.innerHTML =
+      `<div class="history-card-header">` +
+        `<span class="history-date">${escHtml(date)}</span>` +
+        `<span class="history-folder" title="${escHtml(entry.folder_path)}">${escHtml(folder)}</span>` +
+        `<span class="history-template">${escHtml(entry.template_name)}</span>` +
+        `<span class="history-stats">${statsHtml}</span>` +
+      `</div>` +
+      `<div class="history-log"></div>`;
+
+    const header = card.querySelector(".history-card-header");
+
+    if (entry.undone) {
+      const badge = document.createElement("span");
+      badge.className = "history-badge-undone";
+      badge.textContent = t("undoneLabel");
+      header.appendChild(badge);
+    } else if (entry.moves && entry.moves.length > 0) {
+      const btnUndo = document.createElement("button");
+      btnUndo.className = "btn-undo";
+      btnUndo.textContent = t("undoRun");
+      btnUndo.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (!confirm(t("undoConfirm"))) return;
+        try {
+          await invoke("undo_run", { id: entry.id });
+          loadHistory();
+        } catch (err) {
+          alert(err);
+        }
+      });
+      header.appendChild(btnUndo);
+    }
+
+    const logDiv = card.querySelector(".history-log");
+    header.addEventListener("click", () => {
+      const expanded = card.classList.toggle("expanded");
+      if (expanded && logDiv.childElementCount === 0) {
+        entry.messages.forEach((msg) => logDiv.appendChild(buildLogEntry(msg)));
+      }
+    });
+
+    historyList.appendChild(card);
+  });
+}
+
+async function loadHistory() {
+  const entries = await invoke("get_run_history");
+  renderHistory(entries);
+}
+
+btnClearHistory.addEventListener("click", async () => {
+  if (!confirm(t("clearHistoryConfirm"))) return;
+  await invoke("clear_run_history");
+  renderHistory([]);
+});

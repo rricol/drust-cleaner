@@ -9,3 +9,5 @@ toml = "0.8"
 glob = "0.3"
 walkdir = "2"
 anyhow = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+trash = "5"
